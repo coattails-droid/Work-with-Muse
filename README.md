@@ -59,6 +59,9 @@ If you do trade real money, never trade money you can't afford to lose.
   - Same engine, different feeds: MIT Tech Review, TechCrunch AI, The Decoder
   - Runs 7:15am ET, commits `digests-ai/YYYY-MM-DD.md`; headlines also go
     out in the morning email briefing
+  - Includes a "new open models for local hardware" section: scans Hugging
+    Face for recently released models gaining traction, flags rough size
+    and whether they fit a laptop or need a GPU; each model reported once
 
 ## Quick start (local)
 
