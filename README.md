@@ -29,6 +29,13 @@ If you do trade real money, never trade money you can't afford to lose.
   - Commits paper state back to repo
   - Uploads log as artifact
 
+- `bot/failure_detective.py` + `.github/workflows/failure-detective.yml` - failure detective
+  - Watches `crypto-paper-agent`; when a run fails, it reads the failed logs,
+    matches the error against known failure patterns, and opens a GitHub issue
+    with the likely cause and a suggested fix
+  - Dedupes: won't open a repeat issue for the same error signature
+  - Read-only by design: never retries runs or changes code on its own
+
 ## Quick start (local)
 
 ```bash
