@@ -1,0 +1,4 @@
+# No external deps - uses stdlib only for max portability in GitHub Actions
+# If you add pandas/numpy for backtesting, uncomment:
+# pandas==2.2.2
+# numpy==1.26.4
