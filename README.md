@@ -55,6 +55,11 @@ If you do trade real money, never trade money you can't afford to lose.
     keeps the last day's stories, and commits `digests/YYYY-MM-DD.md`
   - The morning email briefing includes the day's headlines automatically
 
+- `bot/news_digest.py` + `.github/workflows/ai-digest.yml` - daily AI news digest
+  - Same engine, different feeds: MIT Tech Review, TechCrunch AI, The Decoder
+  - Runs 7:15am ET, commits `digests-ai/YYYY-MM-DD.md`; headlines also go
+    out in the morning email briefing
+
 ## Quick start (local)
 
 ```bash
