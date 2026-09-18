@@ -37,6 +37,9 @@ jobs:
               "https://the-decoder.com/feed/"]]
         run: python bot/news_digest.py
 
+      - name: Watch for new local open models
+        run: python bot/local_models.py
+
       - name: Commit digest
         run: |
           git config user.name "ai-digest"
