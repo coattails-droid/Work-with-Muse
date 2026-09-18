@@ -18,7 +18,7 @@ from datetime import datetime, timezone
 # Config
 STARTING_BALANCE = float(os.getenv("STARTING_BALANCE", "50"))
 MAX_RISK_PER_TRADE_PCT = float(os.getenv("MAX_RISK_PER_TRADE_PCT", "2"))  # risk 2% per trade
-SYMBOLS = os.getenv("SYMBOLS", "bitcoin,ethereum,solana").split(",")
+SYMBOLS = os.getenv("SYMBOLS", "bitcoin,ethereum,ripple,bitcoin-cash,kaspa").split(",")
 STATE_FILE = os.getenv("STATE_FILE", "bot/paper_state.json")
 
 COINGECKO_URL = "https://api.coingecko.com/api/v3/simple/price?ids={ids}&vs_currencies=usd"
