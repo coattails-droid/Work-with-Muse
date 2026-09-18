@@ -9,6 +9,7 @@ No API keys needed. Run locally or via the news-digest workflow.
 """
 
 import html
+import json
 import os
 import re
 import urllib.request
@@ -16,11 +17,14 @@ import xml.etree.ElementTree as ET
 from datetime import datetime, timedelta, timezone
 from email.utils import parsedate_to_datetime
 
-FEEDS = [
+DEFAULT_FEEDS = [
     ("CoinDesk", "https://www.coindesk.com/arc/outboundfeeds/rss/"),
     ("CoinTelegraph", "https://cointelegraph.com/rss"),
     ("Decrypt", "https://decrypt.co/feed"),
 ]
+
+FEEDS = json.loads(os.getenv("DIGEST_FEEDS", "null")) or DEFAULT_FEEDS
+TITLE = os.getenv("DIGEST_TITLE", "Crypto News Digest")
 
 DIGEST_DIR = os.getenv("DIGEST_DIR", "digests")
 MAX_AGE_HOURS = int(os.getenv("DIGEST_MAX_AGE_HOURS", "36"))
@@ -83,7 +87,7 @@ def main():
     os.makedirs(DIGEST_DIR, exist_ok=True)
     path = os.path.join(DIGEST_DIR, f"{day}.md")
 
-    lines = [f"# Crypto News Digest — {day}",
+    lines = [f"# {TITLE} — {day}",
              f"_Sources: {', '.join(n for n, _ in FEEDS)} · "
              f"generated {now.strftime('%H:%M')} UTC_\n"]
     if not stories:
