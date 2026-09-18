@@ -44,6 +44,12 @@ If you do trade real money, never trade money you can't afford to lose.
     once the move settles
   - Manual trigger supports a custom threshold and a dry-run mode
 
+- `bot/backtest.py` + `.github/workflows/backtest.yml` - strategy backtest
+  - Manually-triggered replay of the "buy the dips" paper strategy over
+    historical daily prices (no real orders possible)
+  - Compares against an equal-split buy-and-hold baseline; uploads a
+    results file as a run artifact
+
 ## Quick start (local)
 
 ```bash
