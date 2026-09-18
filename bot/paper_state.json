@@ -1,0 +1,33 @@
+{
+  "balance": 50.0,
+  "positions": {},
+  "trade_history": [
+    {
+      "at": "2026-09-18T12:40:21.980523+00:00",
+      "prices": {
+        "bitcoin": 78045,
+        "ethereum": 2504.52,
+        "solana": 105.87
+      },
+      "balance": 50.0,
+      "signals": [
+        {
+          "symbol": "bitcoin",
+          "side": "hold",
+          "reason": "price=$78,045.00 - no auto-trade in safe mode"
+        },
+        {
+          "symbol": "ethereum",
+          "side": "hold",
+          "reason": "price=$2,504.52 - no auto-trade in safe mode"
+        },
+        {
+          "symbol": "solana",
+          "side": "hold",
+          "reason": "price=$105.87 - no auto-trade in safe mode"
+        }
+      ]
+    }
+  ],
+  "started_at": "2026-09-18T12:40:21.980492+00:00"
+}
