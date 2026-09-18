@@ -35,6 +35,14 @@ If you do trade real money, never trade money you can't afford to lose.
     with the likely cause and a suggested fix
   - Dedupes: won't open a repeat issue for the same error signature
   - Read-only by design: never retries runs or changes code on its own
+  - Also watches `price-sentinel`
+
+- `bot/price_sentinel.py` + `.github/workflows/price-sentinel.yml` - price sentinel
+  - Runs hourly; checks 24h moves for BTC, ETH, XRP, BCH, KAS via CoinGecko
+  - Opens a GitHub issue when a coin moves >= 5% (configurable) in 24h,
+    comments fresh readings on the open alert, and closes it automatically
+    once the move settles
+  - Manual trigger supports a custom threshold and a dry-run mode
 
 ## Quick start (local)
 
