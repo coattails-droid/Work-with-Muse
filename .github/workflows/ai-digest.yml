@@ -1,0 +1,52 @@
+name: ai-digest
+
+# Builds a daily AI news digest from RSS feeds and commits it to
+# digests-ai/YYYY-MM-DD.md. Runs every morning; can also be triggered manually.
+
+on:
+  schedule:
+    # 11:15 UTC = 7:15 AM ET (staggered after the crypto digest, before the briefing)
+    - cron: '15 11 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write   # commit the digest back to the repo
+
+jobs:
+  digest:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Build AI digest
+        env:
+          DIGEST_TITLE: 'AI News Digest'
+          DIGEST_DIR: 'digests-ai'
+          DIGEST_FEEDS: >-
+            [["MIT Tech Review",
+              "https://www.technologyreview.com/topic/artificial-intelligence/feed/"],
+             ["TechCrunch AI",
+              "https://techcrunch.com/category/artificial-intelligence/feed/"],
+             ["The Decoder",
+              "https://the-decoder.com/feed/"]]
+        run: python bot/news_digest.py
+
+      - name: Commit digest
+        run: |
+          git config user.name "ai-digest"
+          git config user.email "ai-digest@users.noreply.github.com"
+          git add digests-ai/ || true
+          git diff --staged --quiet || git commit -m "ai news digest $(date -u +%Y-%m-%d)"
+          git push || echo "No push needed or push failed"
+
+      - name: Upload digest artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ai-digest-${{ github.run_id }}
+          path: digests-ai/
