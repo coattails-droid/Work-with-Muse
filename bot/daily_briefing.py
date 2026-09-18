@@ -53,7 +53,7 @@ def fmt_price(p):
     return f"${p:,.2f}" if p >= 1 else f"${p:,.6f}"
 
 
-def fetch_digest_headlines():
+def fetch_digest_headlines(folder="digests"):
     """Return (day, headlines) from the latest news digest in the repo.
 
     Headlines are plain-text (title, source) tuples, max 8. Returns
@@ -65,7 +65,7 @@ def fetch_digest_headlines():
     for delta in (0, 1):
         day = (datetime.now(timezone.utc) - timedelta(days=delta)).strftime("%Y-%m-%d")
         try:
-            data = gh_get(f"/repos/{OWNER}/{REPO}/contents/digests/{day}.md?ref=main")
+            data = gh_get(f"/repos/{OWNER}/{REPO}/contents/{folder}/{day}.md?ref=main")
         except Exception:
             continue
         text = base64.b64decode(data["content"]).decode()
@@ -119,12 +119,19 @@ def main():
         "learning and testing ideas, not a promise of returns.",
     ]
 
-    digest_day, headlines = fetch_digest_headlines()
+    digest_day, headlines = fetch_digest_headlines("digests")
     if headlines:
         lines += ["", f"Today's crypto headlines ({digest_day}):"]
         for title, source in headlines:
             lines.append(f"  - {title} [{source}]")
         lines.append("  Full digest with links: digests/ folder in the repo.")
+
+    ai_day, ai_headlines = fetch_digest_headlines("digests-ai")
+    if ai_headlines:
+        lines += ["", f"Today's AI headlines ({ai_day}):"]
+        for title, source in ai_headlines:
+            lines.append(f"  - {title} [{source}]")
+        lines.append("  Full digest with links: digests-ai/ folder in the repo.")
 
     body = "\n".join(lines)
     today = datetime.now().strftime("%b %d")
