@@ -1,0 +1,50 @@
+name: crypto-paper-agent
+
+on:
+  schedule:
+    # Every 4 hours - adjust as needed. GitHub Actions scheduled runs have some delay.
+    - cron: '0 */4 * * *'
+  workflow_dispatch:
+    inputs:
+      symbols:
+        description: 'Comma-separated CoinGecko ids (e.g. bitcoin,ethereum,solana)'
+        required: false
+        default: 'bitcoin,ethereum,solana'
+
+permissions:
+  contents: write  # to commit paper_state.json back to repo
+
+jobs:
+  paper-trade:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Run paper trader
+        env:
+          SYMBOLS: ${{ github.event.inputs.symbols || 'bitcoin,ethereum,solana' }}
+          STARTING_BALANCE: '50'
+          MAX_RISK_PER_TRADE_PCT: '2'
+          STATE_FILE: 'bot/paper_state.json'
+        run: |
+          python bot/paper_trader.py
+
+      - name: Commit state
+        run: |
+          git config user.name "crypto-paper-agent"
+          git config user.email "crypto-paper-agent@users.noreply.github.com"
+          git add bot/paper_state.json || true
+          git diff --staged --quiet || git commit -m "paper trade log $(date -u +%Y-%m-%dT%H:%MZ)"
+          git push || echo "No push needed or push failed"
+
+      - name: Upload log artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: paper-log-${{ github.run_id }}
+          path: bot/paper_state.json
