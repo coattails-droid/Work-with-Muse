@@ -1,0 +1,44 @@
+name: price-sentinel
+
+# Watches tracked coins for large 24h moves. Opens a GitHub issue when a coin
+# moves beyond ALERT_THRESHOLD_PCT, comments fresh readings on the open alert,
+# and closes the issue automatically once the move settles.
+
+on:
+  schedule:
+    # Every hour
+    - cron: '0 * * * *'
+  workflow_dispatch:
+    inputs:
+      threshold_pct:
+        description: 'Alert threshold in percent (24h move)'
+        required: false
+        default: '5'
+      dry_run:
+        description: 'Print actions without opening/closing issues (1/0)'
+        required: false
+        default: '0'
+
+permissions:
+  issues: write
+
+jobs:
+  watch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Check prices and manage alerts
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+          COIN_IDS: 'bitcoin,ethereum,ripple,bitcoin-cash,kaspa'
+          ALERT_THRESHOLD_PCT: ${{ github.event.inputs.threshold_pct || '5' }}
+          DRY_RUN: ${{ github.event.inputs.dry_run || '0' }}
+        run: python bot/price_sentinel.py
