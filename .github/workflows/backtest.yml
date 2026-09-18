@@ -1,0 +1,49 @@
+name: backtest
+
+# Manually-triggered strategy backtest. Replays the "buy the dips" paper
+# strategy over historical daily prices and uploads the results. Paper only:
+# nothing here can place real orders.
+
+on:
+  workflow_dispatch:
+    inputs:
+      days:
+        description: 'History window in days'
+        required: false
+        default: '180'
+      dip_pct:
+        description: 'Entry: buy on a daily drop of this % or more'
+        required: false
+        default: '5'
+      take_profit_pct:
+        description: 'Exit: sell on a rebound of this % above entry'
+        required: false
+        default: '10'
+
+permissions:
+  contents: read
+  actions: write   # upload results artifact
+
+jobs:
+  backtest:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Run backtest
+        env:
+          DIP_PCT: ${{ github.event.inputs.dip_pct || '5' }}
+          TAKE_PROFIT_PCT: ${{ github.event.inputs.take_profit_pct || '10' }}
+        run: python bot/backtest.py --days ${{ github.event.inputs.days || '180' }} --out backtest_results.json
+
+      - name: Upload results
+        uses: actions/upload-artifact@v4
+        with:
+          name: backtest-results-${{ github.run_id }}
+          path: backtest_results.json
