@@ -53,6 +53,32 @@ def fmt_price(p):
     return f"${p:,.2f}" if p >= 1 else f"${p:,.6f}"
 
 
+def fetch_digest_headlines():
+    """Return (day, headlines) from the latest news digest in the repo.
+
+    Headlines are plain-text (title, source) tuples, max 8. Returns
+    (None, []) when no digest is available; the briefing sends without it.
+    """
+    import re
+    from datetime import timedelta, timezone
+
+    for delta in (0, 1):
+        day = (datetime.now(timezone.utc) - timedelta(days=delta)).strftime("%Y-%m-%d")
+        try:
+            data = gh_get(f"/repos/{OWNER}/{REPO}/contents/digests/{day}.md?ref=main")
+        except Exception:
+            continue
+        text = base64.b64decode(data["content"]).decode()
+        heads = []
+        for line in text.splitlines():
+            m = re.match(r"- \*\*\[(.*?)\]\(.*?\)\*\*\s*[—–-]\s*(.*)", line)
+            if m and len(heads) < 8:
+                heads.append((m.group(1).strip(), m.group(2).strip()))
+        if heads:
+            return day, heads
+    return None, []
+
+
 def main():
     if not gmail_connected():
         print(
@@ -92,6 +118,14 @@ def main():
         "Reminder: turning $50 into $1000 is a 20x return. This log is for",
         "learning and testing ideas, not a promise of returns.",
     ]
+
+    digest_day, headlines = fetch_digest_headlines()
+    if headlines:
+        lines += ["", f"Today's crypto headlines ({digest_day}):"]
+        for title, source in headlines:
+            lines.append(f"  - {title} [{source}]")
+        lines.append("  Full digest with links: digests/ folder in the repo.")
+
     body = "\n".join(lines)
     today = datetime.now().strftime("%b %d")
     subject = f"Crypto paper briefing — {today}"
