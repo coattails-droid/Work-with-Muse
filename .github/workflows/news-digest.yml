@@ -1,0 +1,42 @@
+name: news-digest
+
+# Builds a daily crypto news digest from RSS feeds and commits it to
+# digests/YYYY-MM-DD.md. Runs every morning; can also be triggered manually.
+
+on:
+  schedule:
+    # 11:00 UTC = 7:00 AM ET (before the morning email briefing)
+    - cron: '0 11 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write   # commit the digest back to the repo
+
+jobs:
+  digest:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Build digest
+        run: python bot/news_digest.py
+
+      - name: Commit digest
+        run: |
+          git config user.name "news-digest"
+          git config user.email "news-digest@users.noreply.github.com"
+          git add digests/ || true
+          git diff --staged --quiet || git commit -m "news digest $(date -u +%Y-%m-%d)"
+          git push || echo "No push needed or push failed"
+
+      - name: Upload digest artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: news-digest-${{ github.run_id }}
+          path: digests/
