@@ -50,6 +50,11 @@ If you do trade real money, never trade money you can't afford to lose.
   - Compares against an equal-split buy-and-hold baseline; uploads a
     results file as a run artifact
 
+- `bot/news_digest.py` + `.github/workflows/news-digest.yml` - daily news digest
+  - Every morning pulls crypto RSS feeds (CoinDesk, CoinTelegraph, Decrypt),
+    keeps the last day's stories, and commits `digests/YYYY-MM-DD.md`
+  - The morning email briefing includes the day's headlines automatically
+
 ## Quick start (local)
 
 ```bash
