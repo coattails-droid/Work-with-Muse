@@ -6,7 +6,7 @@ name: failure-detective
 
 on:
   workflow_run:
-    workflows: ["crypto-paper-agent"]
+    workflows: ["crypto-paper-agent", "price-sentinel"]
     types: [completed]
 
 permissions:
