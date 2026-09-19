@@ -75,6 +75,13 @@ If you do trade real money, never trade money you can't afford to lose.
     before acting on them
   - Watched by `failure-detective` like the rest of the fleet
 
+- `bot/build_dashboard.py` + `.github/workflows/dashboard.yml` - mission-control dashboard
+  - Builds `docs/index.html` hourly (served via GitHub Pages): paper balance
+    with history chart, price table with 24h changes, workflow health table,
+    open issues, latest crypto/AI headlines, and research briefs
+  - Fully static page: inline CSS + SVG chart, no JavaScript, no external assets
+  - Watched by `failure-detective`
+
 ## Quick start (local)
 
 ```bash
