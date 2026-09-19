@@ -1,0 +1,64 @@
+name: research-agent
+
+# On-demand research briefs. Open an issue labeled `research` (or titled
+# "Research: ...") and the agent researches the topic, commits a brief to
+# research/YYYY-MM-DD-<slug>.md, updates research/INDEX.md, and comments the
+# summary back on the issue. Can also be triggered manually with a topic.
+
+on:
+  issues:
+    types: [opened, labeled]
+  workflow_dispatch:
+    inputs:
+      topic:
+        description: 'Research topic'
+        required: true
+      issue_number:
+        description: 'Issue to report back to (optional)'
+        required: false
+        default: ''
+      dry_run:
+        description: 'Print the brief without writing files or commenting (1/0)'
+        required: false
+        default: '0'
+
+permissions:
+  contents: write   # commit the research brief
+  issues: write     # comment back on the issue
+
+jobs:
+  research:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    if: |
+      github.event_name == 'workflow_dispatch' ||
+      contains(github.event.issue.labels.*.name, 'research') ||
+      startsWith(github.event.issue.title, 'Research:')
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Research the topic
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+          TOPIC: ${{ github.event.inputs.topic }}
+          ISSUE_NUMBER: ${{ github.event.inputs.issue_number || github.event.issue.number }}
+          ISSUE_TITLE: ${{ github.event.issue.title }}
+          ISSUE_BODY: ${{ github.event.issue.body }}
+          DRY_RUN: ${{ github.event.inputs.dry_run || '0' }}
+        run: python bot/research_agent.py
+
+      - name: Commit research brief
+        if: ${{ github.event.inputs.dry_run != '1' }}
+        run: |
+          git config user.name "research-agent"
+          git config user.email "research-agent@users.noreply.github.com"
+          git add research/ || true
+          git diff --staged --quiet || git commit -m "research: ${{ github.event.inputs.topic || github.event.issue.title }}"
+          git push || echo "No push needed or push failed"
