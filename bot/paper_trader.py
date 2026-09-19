@@ -3,7 +3,7 @@ Paper trading bot - educational example.
 Does NOT place real orders. Fetches public prices and simulates a strategy
 with strict risk controls.
 
-Goal context: turning $50 into $1000 is a 20x return. That requires extreme
+Goal context: turning $50 into $500 is a 10x return. That requires extreme
 risk and in practice usually results in losing the entire $50. This bot
 defaults to paper trading so you can test ideas without risking money.
 """
@@ -95,7 +95,7 @@ def main():
     print(f"\nRisk controls:")
     print(f"  Balance: ${state['balance']:.2f}")
     print(f"  Max risk per trade: ${risk_per_trade_dollars:.2f} ({MAX_RISK_PER_TRADE_PCT}%)")
-    print(f"  To turn $50 into $1000 you need 20x. That implies risking ruin.")
+    print(f"  To turn $50 into $500 you need 10x. That implies risking ruin.")
     print(f"  This bot will NOT use leverage by default.")
 
     # Append a log entry
