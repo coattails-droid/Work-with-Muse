@@ -5,11 +5,11 @@ fetches public prices, and logs paper-trade signals. No real orders are placed.
 
 ## ⚠️ Honest risk note
 
-You mentioned turning $50 into $1000. That's a 20x return.
+You mentioned turning $50 into $500. That's a 10x return.
 
-- To get 20x quickly you need extreme leverage or extremely lucky concentrated bets.
+- To get 10x quickly you need extreme leverage or extremely lucky concentrated bets.
 - In practice, that almost always means losing the entire $50.
-- There is no workflow, bot, or AI agent that can reliably turn $50 into $1000 by "betting on price changes."
+- There is no workflow, bot, or AI agent that can reliably turn $50 into $500 by "betting on price changes."
 - If anyone promises that, it's a scam.
 
 This repo is set up for **paper trading first**: test strategies with fake money,
@@ -115,7 +115,7 @@ Once this is in GitHub, I can:
 
 Want me to wire that up? Tell me your repo name and I'll help push this and create a scheduled check-in.
 
-## Next steps if you want real trading (not recommended for 20x goals)
+## Next steps if you want real trading (not recommended for 10x goals)
 
 - Use a reputable exchange's testnet / paper account first
 - Never give your API secret keys to a workflow without IP allowlists and withdraw-disabled keys
