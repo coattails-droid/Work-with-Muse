@@ -1,0 +1,42 @@
+name: dashboard
+
+# Builds the mission-control dashboard (docs/index.html) served via GitHub
+# Pages: paper balance + chart, prices, workflow health, open issues,
+# latest headlines, and research briefs. Static page, no JS, no assets.
+
+on:
+  schedule:
+    # Hourly at :15 (a few minutes after the other hourly jobs)
+    - cron: '15 * * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write   # commit docs/index.html back to the repo
+  actions: read     # read workflow run status for the health table
+  issues: read      # list open issues for the alerts section
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Build dashboard
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+        run: python bot/build_dashboard.py
+
+      - name: Commit dashboard
+        run: |
+          git config user.name "dashboard"
+          git config user.email "dashboard@users.noreply.github.com"
+          git add docs/ || true
+          git diff --staged --quiet || git commit -m "dashboard update $(date -u +%Y-%m-%dT%H:%M)"
+          git push || echo "No push needed or push failed"
