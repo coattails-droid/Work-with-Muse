@@ -61,4 +61,10 @@ jobs:
           git config user.email "research-agent@users.noreply.github.com"
           git add research/ || true
           git diff --staged --quiet || git commit -m "research: ${{ github.event.inputs.topic || github.event.issue.title }}"
-          git push || echo "No push needed or push failed"
+          # Retry the push a few times: concurrent runs can race on the push.
+          for i in 1 2 3 4 5; do
+            if git push; then break; fi
+            echo "push attempt $i failed, rebasing and retrying..."
+            git pull --rebase origin main || true
+            sleep 5
+          done
