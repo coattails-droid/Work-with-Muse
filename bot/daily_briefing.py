@@ -126,6 +126,38 @@ def fetch_research_briefs(max_reports=2):
     return out
 
 
+def fetch_model_news(max_models=6):
+    """Return (day, models) from the latest AI digest's open-models section.
+
+    Models are (name, url, details) tuples drawn from the digest's
+    "New open models for local hardware" section. Returns (None, []) when
+    no recent digest has that section; the briefing sends without it.
+    """
+    import re
+    from datetime import timedelta, timezone
+
+    for delta in (0, 1):
+        day = (datetime.now(timezone.utc) - timedelta(days=delta)).strftime("%Y-%m-%d")
+        try:
+            data = gh_get(f"/repos/{OWNER}/{REPO}/contents/digests-ai/{day}.md?ref=main")
+        except Exception:
+            continue
+        text = base64.b64decode(data["content"]).decode()
+        m = re.search(r"## New open models for local hardware\n(.*?)(?:\n## |\Z)",
+                      text, re.S)
+        if not m:
+            continue
+        models = []
+        for line in m.group(1).splitlines():
+            mm = re.match(r"- \*\*\[(.*?)\]\((.*?)\)\*\*\s*[—–-]\s*(.*)", line)
+            if mm and len(models) < max_models:
+                models.append((mm.group(1).strip(), mm.group(2).strip(),
+                               mm.group(3).strip()))
+        if models:
+            return day, models
+    return None, []
+
+
 def main():
     if not gmail_connected():
         print(
@@ -179,6 +211,13 @@ def main():
         for title, source in ai_headlines:
             lines.append(f"  - {title} [{source}]")
         lines.append("  Full digest with links: digests-ai/ folder in the repo.")
+
+    model_day, models = fetch_model_news()
+    if models:
+        lines += ["", f"New open models for local hardware ({model_day}):"]
+        for name, url, details in models:
+            lines.append(f"  - {name} ({details})")
+        lines.append("  Full list with Hugging Face links: digests-ai/ folder in the repo.")
 
     briefs = fetch_research_briefs()
     if briefs:
