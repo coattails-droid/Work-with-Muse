@@ -79,6 +79,53 @@ def fetch_digest_headlines(folder="digests"):
     return None, []
 
 
+def fetch_research_briefs(max_reports=2):
+    """Return [(day, topic, findings)] for the most recent research briefs.
+
+    Looks at research/ for briefs dated today or yesterday (UTC, matching
+    the research agent's dating). Findings are up to 4 key-finding bullets
+    with source refs stripped. Returns [] when nothing recent exists.
+    """
+    import re
+    from datetime import timedelta, timezone
+
+    try:
+        items = gh_get(f"/repos/{OWNER}/{REPO}/contents/research?ref=main")
+    except Exception:
+        return []
+    days = {(datetime.now(timezone.utc) - timedelta(days=d)).strftime("%Y-%m-%d")
+            for d in (0, 1)}
+    candidates = []
+    for it in items:
+        name = it.get("name", "")
+        m = re.match(r"(\d{4}-\d{2}-\d{2})-(.+)\.md$", name)
+        if m and m.group(1) in days and name != "INDEX.md":
+            candidates.append((m.group(1), it["path"]))
+    candidates.sort(reverse=True)
+    out = []
+    for day, path in candidates[:max_reports]:
+        try:
+            data = gh_get(f"/repos/{OWNER}/{REPO}/contents/{path}?ref=main")
+        except Exception:
+            continue
+        text = base64.b64decode(data["content"]).decode()
+        title = re.search(r"^# Research: (.*)$", text, re.M)
+        findings = []
+        in_kf = False
+        for line in text.splitlines():
+            if line.startswith("## Key findings"):
+                in_kf = True
+                continue
+            if in_kf:
+                if line.startswith("## "):
+                    break
+                if line.startswith("- ") and len(findings) < 4:
+                    findings.append(
+                        re.sub(r"\s*\[\d+\]$", "", line[2:].strip()))
+        out.append((day, title.group(1).strip() if title else path, findings))
+    return out
+
+
 def main():
     if not gmail_connected():
         print(
@@ -132,6 +179,15 @@ def main():
         for title, source in ai_headlines:
             lines.append(f"  - {title} [{source}]")
         lines.append("  Full digest with links: digests-ai/ folder in the repo.")
+
+    briefs = fetch_research_briefs()
+    if briefs:
+        lines += ["", "New research briefs:"]
+        for day, topic, findings in briefs:
+            lines.append(f"  {topic} ({day}):")
+            for f in findings:
+                lines.append(f"    - {f}")
+        lines.append("  Full briefs with sources: research/ folder in the repo.")
 
     body = "\n".join(lines)
     today = datetime.now().strftime("%b %d")
