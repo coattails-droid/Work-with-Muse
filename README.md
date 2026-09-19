@@ -63,6 +63,18 @@ If you do trade real money, never trade money you can't afford to lose.
     Face for recently released models gaining traction, flags rough size
     and whether they fit a laptop or need a GPU; each model reported once
 
+- `bot/research_agent.py` + `.github/workflows/research-agent.yml` - research agent
+  - On-demand research briefs: open an issue labeled `research` (or titled
+    "Research: ..."), or trigger manually with a topic
+  - Researches via Wikipedia API, Google News RSS, and best-effort web search
+    (stdlib only, no API keys); writes an extractive brief to
+    `research/YYYY-MM-DD-<slug>.md`, updates `research/INDEX.md`, and comments
+    the summary back on the issue
+  - Briefs are organized evidence (overview, how it works, latest
+    developments, limitations) with numbered sources — verify key claims
+    before acting on them
+  - Watched by `failure-detective` like the rest of the fleet
+
 ## Quick start (local)
 
 ```bash
