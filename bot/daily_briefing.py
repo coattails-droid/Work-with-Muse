@@ -162,7 +162,7 @@ def main():
         )
     lines += [
         "",
-        "Reminder: turning $50 into $1000 is a 20x return. This log is for",
+        "Reminder: turning $50 into $500 is a 10x return. This log is for",
         "learning and testing ideas, not a promise of returns.",
     ]
 
