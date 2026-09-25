@@ -25,7 +25,9 @@ from zoneinfo import ZoneInfo
 API = "https://api.github.com"
 ET = ZoneInfo("America/New_York")
 NAMES = {"bitcoin": "BTC", "ethereum": "ETH", "ripple": "XRP",
-         "bitcoin-cash": "BCH", "kaspa": "KAS", "solana": "SOL"}
+         "bitcoin-cash": "BCH", "kaspa": "KAS", "solana": "SOL",
+         "pyth-network": "PYTH", "near": "NEAR", "bittensor": "TAO",
+         "tao-bot": "TAOBOT"}
 
 WORKFLOWS = ["crypto-paper-agent", "price-sentinel", "news-digest",
              "ai-digest", "backtest", "failure-detective",
