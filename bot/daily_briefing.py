@@ -26,6 +26,10 @@ NAMES = {
     "ripple": "XRP",
     "bitcoin-cash": "BCH",
     "kaspa": "KAS",
+    "pyth-network": "PYTH",
+    "near": "NEAR",
+    "bittensor": "TAO",
+    "tao-bot": "TAOBOT",
 }
 
 
