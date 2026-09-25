@@ -1,6 +1,6 @@
 name: backtest
 
-# Manually-triggered strategy backtest. Replays the "buy the dips" paper
+# Manually-triggered strategy backtest. Replays the DCA value paper
 # strategy over historical daily prices and uploads the results. Paper only:
 # nothing here can place real orders.
 
@@ -11,14 +11,14 @@ on:
         description: 'History window in days'
         required: false
         default: '730'
-      dip_pct:
-        description: 'Entry: buy on a daily drop of this % or more'
+      take_profit_mult:
+        description: 'Exit: sell full position at this multiple of coin DCA (e.g. 1.30)'
         required: false
-        default: '5'
-      take_profit_pct:
-        description: 'Exit: sell on a rebound of this % above entry'
+        default: '1.30'
+      monthly_contrib:
+        description: 'Paper cash contributed on the 1st of each month'
         required: false
-        default: '10'
+        default: '100'
 
 permissions:
   contents: read
@@ -38,8 +38,8 @@ jobs:
 
       - name: Run backtest
         env:
-          DIP_PCT: ${{ github.event.inputs.dip_pct || '5' }}
-          TAKE_PROFIT_PCT: ${{ github.event.inputs.take_profit_pct || '10' }}
+          TAKE_PROFIT_MULT: ${{ github.event.inputs.take_profit_mult || '1.30' }}
+          MONTHLY_CONTRIB: ${{ github.event.inputs.monthly_contrib || '100' }}
         run: python bot/backtest.py --days ${{ github.event.inputs.days || '730' }} --out backtest_results.json
 
       - name: Upload results
