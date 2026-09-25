@@ -7,9 +7,9 @@ on:
   workflow_dispatch:
     inputs:
       symbols:
-        description: 'Comma-separated CoinGecko ids (e.g. bitcoin,ethereum,ripple,bitcoin-cash,kaspa)'
+        description: 'Comma-separated CoinGecko ids (e.g. bitcoin,ethereum,ripple,bitcoin-cash,kaspa,pyth-network,near,bittensor,tao-bot)'
         required: false
-        default: 'bitcoin,ethereum,ripple,bitcoin-cash,kaspa'
+        default: 'bitcoin,ethereum,ripple,bitcoin-cash,kaspa,pyth-network,near,bittensor,tao-bot'
 
 permissions:
   contents: write  # to commit paper_state.json back to repo
@@ -28,7 +28,7 @@ jobs:
 
       - name: Run paper trader
         env:
-          SYMBOLS: ${{ github.event.inputs.symbols || 'bitcoin,ethereum,ripple,bitcoin-cash,kaspa' }}
+          SYMBOLS: ${{ github.event.inputs.symbols || 'bitcoin,ethereum,ripple,bitcoin-cash,kaspa,pyth-network,near,bittensor,tao-bot' }}
           STARTING_BALANCE: '50'
           MAX_RISK_PER_TRADE_PCT: '2'
           STATE_FILE: 'bot/paper_state.json'
