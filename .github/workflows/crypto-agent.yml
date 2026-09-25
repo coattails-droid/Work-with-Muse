@@ -30,7 +30,11 @@ jobs:
         env:
           SYMBOLS: ${{ github.event.inputs.symbols || 'bitcoin,ethereum,ripple,bitcoin-cash,kaspa,pyth-network,near,bittensor,tao-bot' }}
           STARTING_BALANCE: '50'
-          MAX_RISK_PER_TRADE_PCT: '2'
+          BUY_USD: '50'
+          MAX_BUYS_PER_MONTH: '2'
+          MA_DAYS: '700'
+          TAKE_PROFIT_MULT: '1.30'
+          MONTHLY_CONTRIB: '100'
           STATE_FILE: 'bot/paper_state.json'
         run: |
           python bot/paper_trader.py
