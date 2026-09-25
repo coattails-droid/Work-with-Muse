@@ -15,8 +15,11 @@ Also computes an equal-split buy-and-hold baseline ($10 per coin) over the
 same window for comparison.
 
 Usage:
-    python bot/backtest.py [--days 180] [--prices-file prices.json]
+    python bot/backtest.py [--days 730] [--prices-file prices.json]
                            [--out backtest_results.json]
+
+Data: CoinGecko market_chart for windows up to 365 days (free-tier max);
+Yahoo Finance daily closes for longer windows (free, no key).
 """
 
 import argparse
@@ -30,13 +33,24 @@ from datetime import datetime, timezone
 COINS = ["bitcoin", "ethereum", "ripple", "bitcoin-cash", "kaspa"]
 STARTING_CASH = 50.0
 
+# Yahoo Finance symbols, used when the window exceeds CoinGecko's free-tier
+# history cap (365 days).
+YAHOO_SYMBOLS = {
+    "bitcoin": "BTC-USD",
+    "ethereum": "ETH-USD",
+    "ripple": "XRP-USD",
+    "bitcoin-cash": "BCH-USD",
+    "kaspa": "KAS-USD",
+}
+COINGECKO_MAX_DAYS = 365
+
 DIP_PCT = float(os.getenv("DIP_PCT", "5"))                 # entry: daily drop %
 TAKE_PROFIT_PCT = float(os.getenv("TAKE_PROFIT_PCT", "10"))  # exit: rebound %
 MAX_HOLD_DAYS = int(os.getenv("MAX_HOLD_DAYS", "14"))       # exit: time stop
 POSITION_PCT = float(os.getenv("POSITION_PCT", "20"))       # cash per trade %
 
 
-def fetch_history(days):
+def fetch_history_coingecko(days):
     series = {}
     for i, cid in enumerate(COINS):
         url = (f"https://api.coingecko.com/api/v3/coins/{cid}/market_chart"
@@ -52,6 +66,52 @@ def fetch_history(days):
         if i < len(COINS) - 1:
             time.sleep(12)
     return series
+
+
+def fetch_history_yahoo(days):
+    """Daily closes from Yahoo Finance (free, no key); full multi-year
+    history, used when the window exceeds CoinGecko's free-tier cap."""
+    to_s = int(time.time())
+    from_s = to_s - days * 86400
+    series = {}
+    for i, cid in enumerate(COINS):
+        sym = YAHOO_SYMBOLS[cid]
+        url = (f"https://query1.finance.yahoo.com/v8/finance/chart/{sym}"
+               f"?interval=1d&period1={from_s}&period2={to_s}")
+        req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
+        with urllib.request.urlopen(req, timeout=30) as r:
+            res = json.loads(r.read().decode())["chart"]["result"][0]
+        stamps = res["timestamp"]
+        closes = res["indicators"]["quote"][0]["close"]
+        pts = [
+            (datetime.fromtimestamp(t, timezone.utc).strftime("%Y-%m-%d"), c)
+            for t, c in zip(stamps, closes) if c is not None
+        ]
+        series[cid] = pts
+        if i < len(COINS) - 1:
+            time.sleep(2)
+    return series
+
+
+def align_series(series):
+    """Restrict all coins to their common dates (sorted). Guards against a
+    coin missing a day on one feed or the other."""
+    maps = {c: dict(series[c]) for c in COINS}
+    common = set(maps[COINS[0]])
+    for c in COINS[1:]:
+        common &= set(maps[c])
+    dates = sorted(common)
+    return {c: [(d, maps[c][d]) for d in dates] for c in COINS}
+
+
+def fetch_history(days):
+    """Return (series, source_description), picking the feed that can serve
+    the requested window."""
+    if days > COINGECKO_MAX_DAYS:
+        return (fetch_history_yahoo(days),
+                "Yahoo Finance daily closes, vs USD")
+    return (fetch_history_coingecko(days),
+            "CoinGecko market_chart, daily, vs USD")
 
 
 def run_backtest(series):
@@ -157,7 +217,7 @@ def baseline(series):
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--days", type=int, default=180)
+    ap.add_argument("--days", type=int, default=730)
     ap.add_argument("--prices-file", default=None)
     ap.add_argument("--out", default="backtest_results.json")
     args = ap.parse_args()
@@ -169,8 +229,8 @@ def main():
                   for c in COINS}
         source = f"local file {args.prices_file} (CoinGecko)"
     else:
-        series = fetch_history(args.days)
-        source = "CoinGecko market_chart, daily, vs USD"
+        series, source = fetch_history(args.days)
+    series = align_series(series)
 
     # sanity: all series same length
     n = len(series[COINS[0]])
