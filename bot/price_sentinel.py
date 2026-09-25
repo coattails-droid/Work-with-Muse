@@ -19,6 +19,7 @@ Env:
     DRY_RUN             - "1" to print actions without touching GitHub
 """
 
+import html
 import json
 import os
 import re
@@ -94,19 +95,79 @@ def alert_title(coin, change, direction):
             f"{change:+.1f}% in 24h")
 
 
-def alert_body(coin, change, direction):
+def alert_body(coin, change, direction, cause_section=""):
     word = "surged" if direction == "up" else "dropped"
-    return (
+    body = (
         f"<!-- sentinel-coin: {coin['id']} -->\n"
         f"**{coin['name']} ({coin['symbol'].upper()})** {word} "
         f"**{change:+.2f}%** over the last 24h.\n\n"
         f"- Current price: **{fmt_usd(coin.get('current_price'))}**\n"
         f"- 24h high / low: {fmt_usd(coin.get('high_24h'))} / "
         f"{fmt_usd(coin.get('low_24h'))}\n\n"
+    )
+    if cause_section:
+        body += cause_section + "\n\n"
+    body += (
         f"This issue stays open while the 24h move remains elevated and "
         f"closes automatically once it settles.\n\n"
         f"---\n*Opened automatically by price-sentinel.*"
     )
+    return body
+
+
+def fetch_news(query, max_results=4, timeout=30):
+    """Google News RSS (keyless); return [(title, link, source, pubdate)]."""
+    url = ("https://news.google.com/rss/search?q=" + urllib.parse.quote(query)
+           + "&hl=en-US&gl=US&ceid=US:en")
+    req = urllib.request.Request(url, headers={"User-Agent": "price-sentinel"})
+    try:
+        with urllib.request.urlopen(req, timeout=timeout) as r:
+            xml = r.read().decode("utf-8", errors="replace")
+    except Exception as e:
+        print(f"news fetch failed for {query!r}: {e}", file=sys.stderr)
+        return []
+    items = []
+    for chunk in re.findall(r"<item>(.*?)</item>", xml, re.DOTALL)[:max_results]:
+        t = re.search(r"<title>(.*?)</title>", chunk, re.DOTALL)
+        l = re.search(r"<link>(.*?)</link>", chunk, re.DOTALL)
+        s = re.search(r"<source[^>]*>(.*?)</source>", chunk, re.DOTALL)
+        p = re.search(r"<pubDate>(.*?)</pubDate>", chunk)
+        if t and l:
+            items.append((
+                html.unescape(t.group(1)).strip(),
+                l.group(1).strip(),
+                s.group(1).strip() if s else "Google News",
+                p.group(1).strip()[:16] if p else "",
+            ))
+    return items
+
+
+def fetch_cause_items(coin):
+    """Headline candidates that may explain a big move: coin-specific first,
+    then macro. Returns [(title, link, source, pubdate)], deduped."""
+    seen = set()
+    out = []
+    for query, limit in ((f"{coin['name']} price", 3),
+                         ("cryptocurrency market", 2)):
+        for item in fetch_news(query, max_results=limit):
+            if item[1] not in seen:
+                seen.add(item[1])
+                out.append(item)
+    return out
+
+
+def format_cause_section(items):
+    """Render the cited 'likely cause' note. Pure function (no network)."""
+    if not items:
+        return ""
+    lines = ["### Likely cause (plausible read — not certain)", ""]
+    for title, link, source, pubdate in items:
+        when = f", {pubdate}" if pubdate else ""
+        lines.append(f"- [{title}]({link}) — {source}{when}")
+    lines += ["",
+              "_Freshest related headlines at alert time; they may explain "
+              "the move, but correlation is not causation._"]
+    return "\n".join(lines)
 
 
 def comment_body(coin, change, direction):
@@ -154,9 +215,10 @@ def main():
         coin = a["coin"]
         if a["kind"] == "open":
             title = alert_title(coin, a["change"], a["direction"])
-            body = alert_body(coin, a["change"], a["direction"])
+            cause_section = format_cause_section(fetch_cause_items(coin))
+            body = alert_body(coin, a["change"], a["direction"], cause_section)
             if dry_run:
-                print(f"DRY-RUN open: {title}")
+                print(f"DRY-RUN open: {title}\n{body}")
                 continue
             issue = api(f"/repos/{repo}/issues", token, method="POST",
                         data={"title": title, "body": body,
@@ -218,6 +280,17 @@ def self_test():
     assert by_kind["comment"][0] == "bitcoin", by_kind
     assert by_kind["close"][0] == "ethereum", by_kind
     assert by_kind["open"][0] == "ripple", by_kind
+
+    # likely-cause section: pure formatting, no network
+    fake_items = [("Kaspa Surges on Upgrades", "https://example.com/a",
+                   "CoinMarketCap", "Sat, 06 Sep 2026")]
+    sec = format_cause_section(fake_items)
+    assert "Likely cause" in sec, sec
+    assert "CoinMarketCap" in sec and "example.com" in sec, sec
+    assert "not certain" in sec, sec  # framed as plausible, never certain
+    assert format_cause_section([]) == ""
+    body = alert_body(markets[0], 7.5, "up", sec)
+    assert "Likely cause" in body, body
     print("self-test OK")
 
 
