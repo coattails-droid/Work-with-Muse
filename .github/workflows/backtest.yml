@@ -10,7 +10,7 @@ on:
       days:
         description: 'History window in days'
         required: false
-        default: '180'
+        default: '730'
       dip_pct:
         description: 'Entry: buy on a daily drop of this % or more'
         required: false
@@ -40,7 +40,7 @@ jobs:
         env:
           DIP_PCT: ${{ github.event.inputs.dip_pct || '5' }}
           TAKE_PROFIT_PCT: ${{ github.event.inputs.take_profit_pct || '10' }}
-        run: python bot/backtest.py --days ${{ github.event.inputs.days || '180' }} --out backtest_results.json
+        run: python bot/backtest.py --days ${{ github.event.inputs.days || '730' }} --out backtest_results.json
 
       - name: Upload results
         uses: actions/upload-artifact@v4
