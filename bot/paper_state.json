@@ -1,6 +1,61 @@
 {
-  "balance": 50.0,
-  "positions": {},
+  "balance": 0.0,
+  "positions": {
+    "bitcoin": {
+      "units": 0.0005947212541481808,
+      "invested": 50.0,
+      "buy_month": "2026-09",
+      "buy_count": 1
+    },
+    "ethereum": {
+      "units": 0.018562380736703767,
+      "invested": 50.0,
+      "buy_month": "2026-09",
+      "buy_count": 1
+    },
+    "ripple": {
+      "units": 31.84713375796178,
+      "invested": 50.0,
+      "buy_month": "2026-09",
+      "buy_count": 1
+    },
+    "bitcoin-cash": {
+      "units": 0.0,
+      "invested": 0.0,
+      "buy_month": "2026-09",
+      "buy_count": 0
+    },
+    "kaspa": {
+      "units": 0.0,
+      "invested": 0.0,
+      "buy_month": "2026-09",
+      "buy_count": 0
+    },
+    "pyth-network": {
+      "units": 0.0,
+      "invested": 0.0,
+      "buy_month": "2026-09",
+      "buy_count": 0
+    },
+    "near": {
+      "units": 0.0,
+      "invested": 0.0,
+      "buy_month": "2026-09",
+      "buy_count": 0
+    },
+    "bittensor": {
+      "units": 0.0,
+      "invested": 0.0,
+      "buy_month": "2026-09",
+      "buy_count": 0
+    },
+    "tao-bot": {
+      "units": 0.0,
+      "invested": 0.0,
+      "buy_month": "2026-09",
+      "buy_count": 0
+    }
+  },
   "trade_history": [
     {
       "at": "2026-09-18T12:40:21.980523+00:00",
@@ -1737,7 +1792,79 @@
           "reason": "price=$0.04 - no auto-trade in safe mode"
         }
       ]
+    },
+    {
+      "at": "2026-09-25T23:15:32.605621+00:00",
+      "prices": {
+        "bitcoin": 84073,
+        "ethereum": 2693.62,
+        "ripple": 1.57,
+        "bitcoin-cash": 344.78,
+        "kaspa": 0.04218937,
+        "pyth-network": 0.074365,
+        "near": 4.98,
+        "bittensor": 318.74,
+        "tao-bot": 0.086078
+      },
+      "balance": 0.0,
+      "total_contributed": 150.0,
+      "equity": 150.0,
+      "actions": [
+        "contributed $100.00 paper cash for 2026-09",
+        "BOUGHT bitcoin: 0.000595 @ $84,073.00 = $50.00 (below 100-week MA $89,564.52; DCA now $84,073.00)",
+        "BOUGHT ethereum: 0.018562 @ $2,693.62 = $50.00 (below 100-week MA $2,756.87; DCA now $2,693.62)",
+        "BOUGHT ripple: 31.847134 @ $1.57 = $50.00 (below 100-week MA $1.98; DCA now $1.57)"
+      ],
+      "signals": [
+        {
+          "symbol": "bitcoin",
+          "side": "buy",
+          "reason": "$50 below 100-week MA $89,564.52"
+        },
+        {
+          "symbol": "ethereum",
+          "side": "buy",
+          "reason": "$50 below 100-week MA $2,756.87"
+        },
+        {
+          "symbol": "ripple",
+          "side": "buy",
+          "reason": "$50 below 100-week MA $1.98"
+        },
+        {
+          "symbol": "bitcoin-cash",
+          "side": "hold",
+          "reason": "price $344.78 below MA but cash $0.00 < $50"
+        },
+        {
+          "symbol": "kaspa",
+          "side": "hold",
+          "reason": "price $0.04 below MA but cash $0.00 < $50"
+        },
+        {
+          "symbol": "pyth-network",
+          "side": "hold",
+          "reason": "price $0.07 below MA but cash $0.00 < $50"
+        },
+        {
+          "symbol": "near",
+          "side": "hold",
+          "reason": "price $4.98 above 100-week MA $2.63"
+        },
+        {
+          "symbol": "bittensor",
+          "side": "hold",
+          "reason": "price $318.74 below MA but cash $0.00 < $50"
+        },
+        {
+          "symbol": "tao-bot",
+          "side": "hold",
+          "reason": "price $0.09 - no 100-week MA yet (short history)"
+        }
+      ]
     }
   ],
-  "started_at": "2026-09-18T12:40:21.980492+00:00"
+  "started_at": "2026-09-18T12:40:21.980492+00:00",
+  "contrib_month": "2026-09",
+  "total_contributed": 150.0
 }
