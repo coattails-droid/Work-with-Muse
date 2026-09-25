@@ -1,78 +1,64 @@
 #!/usr/bin/env python3
-"""Strategy backtest: "buy the dips".
+"""Strategy backtest: DCA value strategy (paper only).
 
-Replays a dip-buying strategy over historical daily prices, paper only.
-
-Rules (exactly as offered):
-  - Entry: a coin drops 5%+ in a single day -> buy at that day's close.
-  - Position size: 20% of available cash per signal, one open position
-    per coin at a time, minimum $1 per trade.
-  - Exit: sell when the price rebounds 10% above the entry close,
-    or after 14 days, whichever comes first.
+Replays the live paper-trader rules over historical daily data:
+  - $100 paper contribution on the 1st of each calendar month ($50 start).
+  - Buy $50 of a coin, at most twice per coin per calendar month, and only
+    when the coin's price is below its 100-week (700-day) moving average.
+    No buys until the coin has 700 days of history.
+  - Sell a coin's entire position only when its price reaches 30% above that
+    coin's average buy price (its DCA).
   - No leverage, no fees, cash earns nothing. Paper only: no real orders.
 
-Also computes an equal-split buy-and-hold baseline ($10 per coin) over the
-same window for comparison.
+Also computes a buy-and-hold baseline that receives the same contributions
+(split equally across coins) for comparison.
+
+Data: Yahoo Finance daily closes (free, no key) for every window, since the
+strategy needs 700 days of warmup history that CoinGecko's free tier cannot
+serve. Pass --prices-file to replay a saved series instead.
 
 Usage:
     python bot/backtest.py [--days 730] [--prices-file prices.json]
                            [--out backtest_results.json]
-
-Data: CoinGecko market_chart for windows up to 365 days (free-tier max);
-Yahoo Finance daily closes for longer windows (free, no key).
 """
 
 import argparse
+import bisect
 import json
 import os
 import sys
 import time
 import urllib.request
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
-COINS = ["bitcoin", "ethereum", "ripple", "bitcoin-cash", "kaspa"]
+COINS = ["bitcoin", "ethereum", "ripple", "bitcoin-cash", "kaspa",
+         "pyth-network", "near", "bittensor", "tao-bot"]
 STARTING_CASH = 50.0
 
-# Yahoo Finance symbols, used when the window exceeds CoinGecko's free-tier
-# history cap (365 days).
 YAHOO_SYMBOLS = {
     "bitcoin": "BTC-USD",
     "ethereum": "ETH-USD",
     "ripple": "XRP-USD",
     "bitcoin-cash": "BCH-USD",
     "kaspa": "KAS-USD",
+    "pyth-network": "PYTH-USD",
+    "near": "NEAR-USD",
+    "bittensor": "TAO22974-USD",
+    "tao-bot": "TAOBOT-USD",
 }
-COINGECKO_MAX_DAYS = 365
 
-DIP_PCT = float(os.getenv("DIP_PCT", "5"))                 # entry: daily drop %
-TAKE_PROFIT_PCT = float(os.getenv("TAKE_PROFIT_PCT", "10"))  # exit: rebound %
-MAX_HOLD_DAYS = int(os.getenv("MAX_HOLD_DAYS", "14"))       # exit: time stop
-POSITION_PCT = float(os.getenv("POSITION_PCT", "20"))       # cash per trade %
-
-
-def fetch_history_coingecko(days):
-    series = {}
-    for i, cid in enumerate(COINS):
-        url = (f"https://api.coingecko.com/api/v3/coins/{cid}/market_chart"
-               f"?vs_currency=usd&days={days}")
-        req = urllib.request.Request(url, headers={"User-Agent": "muse-backtest/1.0"})
-        with urllib.request.urlopen(req, timeout=30) as r:
-            data = json.loads(r.read().decode())
-        pts = data["prices"]
-        series[cid] = [
-            (datetime.fromtimestamp(ts / 1000, timezone.utc).strftime("%Y-%m-%d"), p)
-            for ts, p in pts
-        ]
-        if i < len(COINS) - 1:
-            time.sleep(12)
-    return series
+BUY_USD = float(os.getenv("BUY_USD", "50"))
+MAX_BUYS_PER_MONTH = int(os.getenv("MAX_BUYS_PER_MONTH", "2"))
+MA_DAYS = int(os.getenv("MA_DAYS", "700"))          # 100-week moving average
+TAKE_PROFIT_MULT = float(os.getenv("TAKE_PROFIT_MULT", "1.30"))
+MONTHLY_CONTRIB = float(os.getenv("MONTHLY_CONTRIB", "100"))
 
 
-def fetch_history_yahoo(days):
-    """Daily closes from Yahoo Finance (free, no key); full multi-year
-    history, used when the window exceeds CoinGecko's free-tier cap."""
+def fetch_history(days):
+    """Daily closes for the window plus MA_DAYS of warmup, per coin."""
+    span = days + MA_DAYS + 10
     to_s = int(time.time())
-    from_s = to_s - days * 86400
+    from_s = to_s - span * 86400
     series = {}
     for i, cid in enumerate(COINS):
         sym = YAHOO_SYMBOLS[cid]
@@ -83,104 +69,136 @@ def fetch_history_yahoo(days):
             res = json.loads(r.read().decode())["chart"]["result"][0]
         stamps = res["timestamp"]
         closes = res["indicators"]["quote"][0]["close"]
-        pts = [
+        pts = sorted(
             (datetime.fromtimestamp(t, timezone.utc).strftime("%Y-%m-%d"), c)
-            for t, c in zip(stamps, closes) if c is not None
-        ]
-        series[cid] = pts
+            for t, c in zip(stamps, closes) if c is not None)
+        # de-dupe (keep last)
+        dedup = {}
+        for d, c in pts:
+            dedup[d] = c
+        series[cid] = sorted(dedup.items())
+        print(f"  {cid}: {len(series[cid])} daily closes", flush=True)
         if i < len(COINS) - 1:
             time.sleep(2)
     return series
 
 
-def align_series(series):
-    """Restrict all coins to their common dates (sorted). Guards against a
-    coin missing a day on one feed or the other."""
-    maps = {c: dict(series[c]) for c in COINS}
-    common = set(maps[COINS[0]])
-    for c in COINS[1:]:
-        common &= set(maps[c])
-    dates = sorted(common)
-    return {c: [(d, maps[c][d]) for d in dates] for c in COINS}
+def run_backtest(full_series, days):
+    dates = {c: [d for d, _ in full_series[c]] for c in COINS}
+    closes = {c: [p for _, p in full_series[c]] for c in COINS}
 
+    end_dt = max(datetime.strptime(d, "%Y-%m-%d")
+                 for c in COINS for d in dates[c])
+    grid = [(end_dt - timedelta(days=i)).strftime("%Y-%m-%d")
+            for i in range(days - 1, -1, -1)]
 
-def fetch_history(days):
-    """Return (series, source_description), picking the feed that can serve
-    the requested window."""
-    if days > COINGECKO_MAX_DAYS:
-        return (fetch_history_yahoo(days),
-                "Yahoo Finance daily closes, vs USD")
-    return (fetch_history_coingecko(days),
-            "CoinGecko market_chart, daily, vs USD")
+    def price_at(c, day):
+        i = bisect.bisect_right(dates[c], day) - 1
+        return closes[c][i] if i >= 0 else None
 
-
-def run_backtest(series):
-    dates = [d for d, _ in series[COINS[0]]]
-    closes = {c: [p for _, p in series[c]] for c in COINS}
+    def ma_at(c, day):
+        i = bisect.bisect_right(dates[c], day) - 1
+        if i < MA_DAYS - 1:
+            return None
+        window = closes[c][i - MA_DAYS + 1:i + 1]
+        return sum(window) / MA_DAYS
 
     cash = STARTING_CASH
-    open_pos = {c: None for c in COINS}  # one position per coin
+    contributed = STARTING_CASH
+    pos = {c: {"units": 0.0, "invested": 0.0,
+               "buy_month": None, "buy_count": 0} for c in COINS}
     trades = []
     equity_curve = []
 
-    for i, day in enumerate(dates):
-        # 1) exits
+    for day in grid:
+        month = day[:7]
+        # 1) monthly contribution on the 1st
+        if day.endswith("-01"):
+            cash += MONTHLY_CONTRIB
+            contributed += MONTHLY_CONTRIB
+        # 2) sells: full exit at +30% over the coin's DCA
         for c in COINS:
-            pos = open_pos[c]
-            if not pos:
+            p = pos[c]
+            if p["units"] <= 0:
                 continue
-            price = closes[c][i]
-            entry_price = pos["entry_price"]
-            held = (datetime.strptime(day, "%Y-%m-%d")
-                    - datetime.strptime(pos["entry_date"], "%Y-%m-%d")).days
-            if price >= entry_price * (1 + TAKE_PROFIT_PCT / 100):
-                reason = "take-profit"
-            elif held >= MAX_HOLD_DAYS:
-                reason = "time-stop"
-            else:
+            price = price_at(c, day)
+            if price is None:
                 continue
-            proceeds = pos["units"] * price
-            pnl = proceeds - pos["invested"]
-            cash += proceeds
-            trades.append({**pos, "exit_date": day, "exit_price": price,
-                           "proceeds": round(proceeds, 2),
-                           "pnl": round(pnl, 2), "reason": reason})
-            open_pos[c] = None
-        # 2) entries
+            dca = p["invested"] / p["units"]
+            if price >= dca * TAKE_PROFIT_MULT:
+                proceeds = p["units"] * price
+                pnl = proceeds - p["invested"]
+                cash += proceeds
+                trades.append({"coin": c, "side": "sell", "date": day,
+                               "price": round(price, 4),
+                               "dca": round(dca, 4),
+                               "proceeds": round(proceeds, 2),
+                               "pnl": round(pnl, 2)})
+                pos[c] = {"units": 0.0, "invested": 0.0,
+                          "buy_month": p["buy_month"],
+                          "buy_count": p["buy_count"]}
+        # 3) buys: $50 below the 100-week MA, max 2 per coin per month
         for c in COINS:
-            if i == 0 or open_pos[c]:
+            price = price_at(c, day)
+            if price is None:
                 continue
-            prev, price = closes[c][i - 1], closes[c][i]
-            if prev <= 0:
-                continue
-            if (price / prev - 1) * 100 <= -DIP_PCT:
-                invest = cash * (POSITION_PCT / 100)
-                if invest >= 1.0:
-                    units = invest / price
-                    cash -= invest
-                    open_pos[c] = {"coin": c, "entry_date": day,
-                                   "entry_price": price,
-                                   "invested": round(invest, 2),
-                                   "units": units}
-        # 3) equity
-        equity = cash + sum(
-            (open_pos[c]["units"] * closes[c][i]) for c in COINS if open_pos[c])
+            p = pos[c]
+            if p["buy_month"] != month:
+                p["buy_month"] = month
+                p["buy_count"] = 0
+            ma = ma_at(c, day)
+            if (ma is not None and price < ma
+                    and p["buy_count"] < MAX_BUYS_PER_MONTH
+                    and cash >= BUY_USD):
+                units = BUY_USD / price
+                p["units"] += units
+                p["invested"] += BUY_USD
+                p["buy_count"] += 1
+                cash -= BUY_USD
+                trades.append({"coin": c, "side": "buy", "date": day,
+                               "price": round(price, 4),
+                               "amount": BUY_USD,
+                               "dca": round(p["invested"] / p["units"], 4)})
+        # 4) equity (open positions marked to market)
+        equity = cash + sum(pos[c]["units"] * (price_at(c, day) or 0)
+                            for c in COINS)
         equity_curve.append((day, round(equity, 2)))
 
-    # force-close anything still open at the end
+    return trades, equity_curve, contributed
+
+
+def baseline(full_series, days, contributed_schedule):
+    """Buy-and-hold receiving the same contributions, split equally."""
+    dates = {c: [d for d, _ in full_series[c]] for c in COINS}
+    closes = {c: [p for _, p in full_series[c]] for c in COINS}
+
+    def price_at(c, day):
+        i = bisect.bisect_right(dates[c], day) - 1
+        return closes[c][i] if i >= 0 else None
+
+    end_dt = max(datetime.strptime(d, "%Y-%m-%d")
+                 for c in COINS for d in dates[c])
+    grid = [(end_dt - timedelta(days=i)).strftime("%Y-%m-%d")
+            for i in range(days - 1, -1, -1)]
+    units = {c: 0.0 for c in COINS}
+    per = STARTING_CASH / len(COINS)
     for c in COINS:
-        pos = open_pos[c]
-        if pos:
-            price = closes[c][-1]
-            proceeds = pos["units"] * price
-            pnl = proceeds - pos["invested"]
-            cash += proceeds
-            trades.append({**pos, "exit_date": dates[-1], "exit_price": price,
-                           "proceeds": round(proceeds, 2),
-                           "pnl": round(pnl, 2), "reason": "window-end"})
-            open_pos[c] = None
-    equity_curve[-1] = (dates[-1], round(cash, 2))
-    return trades, equity_curve
+        p0 = price_at(c, grid[0])
+        if p0:
+            units[c] += per / p0
+    for day, amount in contributed_schedule:
+        per = amount / len(COINS)
+        for c in COINS:
+            px = price_at(c, day)
+            if px:
+                units[c] += per / px
+    total, per_coin = 0.0, {}
+    for c in COINS:
+        last = price_at(c, grid[-1]) or 0
+        val = units[c] * last
+        per_coin[c] = round(val, 2)
+        total += val
+    return round(total, 2), per_coin
 
 
 def monthly_returns(equity_curve):
@@ -202,19 +220,6 @@ def max_drawdown(equity_curve):
     return round(dd, 2)
 
 
-def baseline(series):
-    """Equal-split buy-and-hold: $10 per coin at first close."""
-    per_coin = STARTING_CASH / len(COINS)
-    total = 0.0
-    per = {}
-    for c in COINS:
-        first, last = series[c][0][1], series[c][-1][1]
-        val = per_coin / first * last
-        per[c] = round(val, 2)
-        total += val
-    return round(total, 2), per
-
-
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--days", type=int, default=730)
@@ -225,45 +230,54 @@ def main():
     if args.prices_file:
         with open(args.prices_file) as f:
             raw = json.load(f)
-        series = {c: [(p["date"], p["price"]) for p in raw["coins"][c]]
-                  for c in COINS}
-        source = f"local file {args.prices_file} (CoinGecko)"
+        full = {c: sorted((p["date"], p["price"]) for p in raw["coins"][c])
+                for c in COINS}
+        source = f"local file {args.prices_file}"
     else:
-        series, source = fetch_history(args.days)
-    series = align_series(series)
+        print(f"Fetching {args.days}d window + {MA_DAYS}d warmup from Yahoo Finance...")
+        full = fetch_history(args.days)
+        source = "Yahoo Finance daily closes, vs USD"
 
-    # sanity: all series same length
-    n = len(series[COINS[0]])
-    assert all(len(series[c]) == n for c in COINS), "ragged price series"
+    trades, equity, contributed = run_backtest(full, args.days)
 
-    trades, equity = run_backtest(series)
-    base_total, base_per = baseline(series)
+    end_dt = max(datetime.strptime(d, "%Y-%m-%d")
+                 for c in COINS for d, _ in full[c])
+    grid_start = (end_dt - timedelta(days=args.days - 1)).strftime("%Y-%m-%d")
+    grid = [(end_dt - timedelta(days=i)).strftime("%Y-%m-%d")
+            for i in range(args.days - 1, -1, -1)]
+    contrib_schedule = [(d, MONTHLY_CONTRIB) for d in grid if d.endswith("-01")]
+    base_total, base_per = baseline(full, args.days, contrib_schedule)
+
     months = monthly_returns(equity)
-
     end_balance = equity[-1][1]
-    wins = sum(1 for t in trades if t["pnl"] > 0)
-    per_coin_pnl = {c: round(sum(t["pnl"] for t in trades if t["coin"] == c), 2)
-                    for c in COINS}
+    sells = [t for t in trades if t["side"] == "sell"]
+    buys = [t for t in trades if t["side"] == "buy"]
+    wins = sum(1 for t in sells if t["pnl"] > 0)
+    per_coin_pnl = {c: round(sum(t.get("pnl", 0) for t in sells
+                                 if t["coin"] == c), 2) for c in COINS}
 
     result = {
-        "strategy": (f"buy {DIP_PCT}%+ daily dips with {POSITION_PCT}% of cash, "
-                     f"sell at +{TAKE_PROFIT_PCT}% rebound or after "
-                     f"{MAX_HOLD_DAYS} days"),
+        "strategy": (f"DCA value: ${BUY_USD:.0f} buys (max {MAX_BUYS_PER_MONTH}/coin/month) "
+                     f"only below the {MA_DAYS}-day moving average, "
+                     f"${MONTHLY_CONTRIB:.0f}/month contributions, "
+                     f"sell full position at +{round((TAKE_PROFIT_MULT - 1) * 100)}% over coin DCA"),
         "source": source,
         "window": {"start": equity[0][0], "end": equity[-1][0],
-                   "days": n},
+                   "days": len(equity)},
         "starting_cash": STARTING_CASH,
+        "total_contributed": round(contributed, 2),
         "ending_balance": end_balance,
-        "total_return_pct": round((end_balance / STARTING_CASH - 1) * 100, 2),
-        "trades": len(trades),
-        "win_rate_pct": round(wins / len(trades) * 100, 1) if trades else 0.0,
+        "total_return_pct": round((end_balance / contributed - 1) * 100, 2),
+        "buys": len(buys),
+        "sells": len(sells),
+        "win_rate_pct": round(wins / len(sells) * 100, 1) if sells else 0.0,
         "per_coin_pnl": per_coin_pnl,
         "best_month": max(months.items(), key=lambda kv: kv[1]) if months else None,
         "worst_month": min(months.items(), key=lambda kv: kv[1]) if months else None,
         "max_drawdown_pct": max_drawdown(equity),
         "baseline_buy_and_hold": base_total,
         "baseline_per_coin": base_per,
-        "baseline_return_pct": round((base_total / STARTING_CASH - 1) * 100, 2),
+        "baseline_return_pct": round((base_total / contributed - 1) * 100, 2),
         "disclaimer": ("Simulated past performance does not predict future "
                        "results. Educational only, not financial advice."),
     }
@@ -272,14 +286,15 @@ def main():
         json.dump({**result, "trade_ledger": trades}, f, indent=2)
 
     print(f"Window: {result['window']['start']} -> {result['window']['end']} "
-          f"({n} days)")
+          f"({len(equity)} days)")
     print(f"Strategy: {result['strategy']}")
-    print(f"Starting cash: ${STARTING_CASH:.2f}")
-    print(f"Ending balance: ${end_balance:.2f} "
-          f"({result['total_return_pct']:+.1f}%)")
-    print(f"Trades: {len(trades)}, win rate: {result['win_rate_pct']}%")
+    print(f"Contributed: ${contributed:,.2f}")
+    print(f"Ending balance: ${end_balance:,.2f} "
+          f"({result['total_return_pct']:+.1f}% on contributed)")
+    print(f"Buys: {len(buys)}, sells: {len(sells)}, "
+          f"sell win rate: {result['win_rate_pct']}%")
     print(f"Max drawdown: {result['max_drawdown_pct']}%")
-    print(f"Buy-and-hold baseline: ${base_total:.2f} "
+    print(f"Buy-and-hold baseline: ${base_total:,.2f} "
           f"({result['baseline_return_pct']:+.1f}%)")
     print(f"Results written to {args.out}")
     return 0
