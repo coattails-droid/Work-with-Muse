@@ -182,7 +182,8 @@ def main():
 
     lines = [
         "Crypto paper-trading briefing (paper only — no real money moves)",
-        f"Paper balance: ${state.get('balance', 0):.2f} (started at $50.00)",
+        f"Paper balance: ${state.get('balance', 0):.2f} "
+        f"(${state.get('total_contributed', 50.0):.2f} contributed)",
         "",
         "Latest prices:",
     ]
