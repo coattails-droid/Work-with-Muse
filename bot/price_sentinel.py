@@ -183,7 +183,7 @@ def main():
         print("GITHUB_TOKEN and REPO must be set", file=sys.stderr)
         return 2
     coin_ids = os.environ.get(
-        "COIN_IDS", "bitcoin,ethereum,ripple,bitcoin-cash,kaspa")
+        "COIN_IDS", "bitcoin,ethereum,ripple,bitcoin-cash,kaspa,pyth-network,near,bittensor,tao-bot")
     threshold = float(os.environ.get("ALERT_THRESHOLD_PCT", "5"))
     dry_run = os.environ.get("DRY_RUN") == "1"
 
