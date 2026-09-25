@@ -140,7 +140,7 @@ def open_issues(repo, token, max_n=10):
     return out
 
 
-def balance_chart(history):
+def balance_chart(history, baseline):
     """Inline SVG balance-over-time chart."""
     bals = [(h.get("at", "")[:16].replace("T", " "),
              float(h.get("balance", 0))) for h in history
@@ -149,12 +149,12 @@ def balance_chart(history):
         return '<p class="muted">Not enough history yet — the chart appears after a few runs.</p>'
     W, H, P = 660, 220, 34
     vals = [b for _, b in bals]
-    lo, hi = min(vals + [50.0]), max(vals + [50.0])
+    lo, hi = min(vals + [baseline]), max(vals + [baseline])
     span = (hi - lo) or 1.0
     def x(i): return P + i * (W - 2 * P) / (len(bals) - 1)
     def y(v): return H - P - (v - lo) / span * (H - 2 * P)
     pts = " ".join(f"{x(i):.1f},{y(v):.1f}" for i, (_, v) in enumerate(bals))
-    base_y = y(50.0)
+    base_y = y(baseline)
     step = max(1, len(bals) // 6)
     labels = "".join(
         f'<text x="{x(i):.1f}" y="{H - 8}" class="axis">{esc(t[5:])}</text>'
@@ -219,8 +219,9 @@ def build(repo, token):
     state = load_state()
     hist = state.get("trade_history", []) or []
     balance = float(state.get("balance", 0) or 0)
-    pnl = balance - 50.0
-    pnl_pct = pnl / 50.0 * 100
+    contributed = float(state.get("total_contributed", 50.0) or 50.0)
+    pnl = balance - contributed
+    pnl_pct = pnl / contributed * 100 if contributed else 0.0
     blob = f"https://github.com/{repo}/blob/main"
 
     latest = hist[-1] if hist else {}
@@ -326,7 +327,7 @@ def build(repo, token):
 <div class="card"><div class="k">Open issues</div><div class="v">{len(issues)}</div></div>
 </div>
 
-<section><h2>Balance history</h2>{balance_chart(hist)}</section>
+<section><h2>Balance history</h2>{balance_chart(hist, contributed)}</section>
 
 <section><h2>Prices</h2>{price_table}</section>
 
