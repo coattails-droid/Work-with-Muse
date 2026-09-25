@@ -1,11 +1,17 @@
-"""
-Paper trading bot - educational example.
-Does NOT place real orders. Fetches public prices and simulates a strategy
-with strict risk controls.
+#!/usr/bin/env python3
+"""Paper trading bot - DCA value strategy. Paper only: no real orders.
 
-Goal context: turning $50 into $500 is a 10x return. That requires extreme
-risk and in practice usually results in losing the entire $50. This bot
-defaults to paper trading so you can test ideas without risking money.
+Strategy (set 2026-09-25):
+  - $100 of paper cash is contributed on the first run of each calendar month
+    (tracked in state, so it happens exactly once per month).
+  - Buy $50 of a coin, at most twice per coin per calendar month, and only
+    when the coin's price is below its 100-week (700-day) moving average.
+  - Sell a coin's entire position only when its price is >= 30% above that
+    coin's average buy price (its DCA).
+  - No leverage. Cash earns nothing.
+
+Live prices come from CoinGecko; the moving average uses Yahoo Finance
+daily closes (free, no key) because it needs 700 days of history.
 """
 
 import json
@@ -15,35 +21,85 @@ import time
 import urllib.request
 from datetime import datetime, timezone
 
-# Config
 STARTING_BALANCE = float(os.getenv("STARTING_BALANCE", "50"))
-MAX_RISK_PER_TRADE_PCT = float(os.getenv("MAX_RISK_PER_TRADE_PCT", "2"))  # risk 2% per trade
-SYMBOLS = os.getenv("SYMBOLS", "bitcoin,ethereum,ripple,bitcoin-cash,kaspa,pyth-network,near,bittensor,tao-bot").split(",")
+BUY_USD = float(os.getenv("BUY_USD", "50"))
+MAX_BUYS_PER_MONTH = int(os.getenv("MAX_BUYS_PER_MONTH", "2"))
+MA_DAYS = int(os.getenv("MA_DAYS", "700"))
+TAKE_PROFIT_MULT = float(os.getenv("TAKE_PROFIT_MULT", "1.30"))
+MONTHLY_CONTRIB = float(os.getenv("MONTHLY_CONTRIB", "100"))
+SYMBOLS = [s.strip() for s in os.getenv(
+    "SYMBOLS",
+    "bitcoin,ethereum,ripple,bitcoin-cash,kaspa,pyth-network,near,bittensor,tao-bot"
+).split(",") if s.strip()]
 STATE_FILE = os.getenv("STATE_FILE", "bot/paper_state.json")
 
 COINGECKO_URL = "https://api.coingecko.com/api/v3/simple/price?ids={ids}&vs_currencies=usd"
 
+# CoinGecko id -> Yahoo Finance ticker (for 700-day moving averages)
+YAHOO = {
+    "bitcoin": "BTC-USD",
+    "ethereum": "ETH-USD",
+    "ripple": "XRP-USD",
+    "bitcoin-cash": "BCH-USD",
+    "kaspa": "KAS-USD",
+    "pyth-network": "PYTH-USD",
+    "near": "NEAR-USD",
+    "bittensor": "TAO22974-USD",
+    "tao-bot": "TAOBOT-USD",
+}
+
 
 def fetch_prices():
-    ids = ",".join(s.strip() for s in SYMBOLS if s.strip())
+    ids = ",".join(SYMBOLS)
     url = COINGECKO_URL.format(ids=ids)
     req = urllib.request.Request(url, headers={"User-Agent": "crypto-paper-bot/1.0"})
     with urllib.request.urlopen(req, timeout=15) as resp:
         data = json.loads(resp.read().decode())
-    # normalize to {symbol: price}
     return {k: v["usd"] for k, v in data.items() if "usd" in v}
 
 
+def fetch_ma(sym):
+    """MA_DAYS-day simple moving average of daily closes, or None if the
+    coin lacks enough history (too young for a 100-week average)."""
+    ticker = YAHOO.get(sym)
+    if not ticker:
+        return None
+    try:
+        to_s = int(time.time())
+        from_s = to_s - (MA_DAYS + 10) * 86400
+        url = (f"https://query1.finance.yahoo.com/v8/finance/chart/{ticker}"
+               f"?interval=1d&period1={from_s}&period2={to_s}")
+        req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
+        with urllib.request.urlopen(req, timeout=30) as r:
+            res = json.loads(r.read().decode())["chart"]["result"][0]
+        closes = [c for c in res["indicators"]["quote"][0]["close"]
+                  if c is not None]
+        if len(closes) < MA_DAYS:
+            return None
+        return sum(closes[-MA_DAYS:]) / MA_DAYS
+    except Exception as e:
+        print(f"  MA fetch failed for {sym}: {e}", file=sys.stderr)
+        return None
+
+
+def blank_position():
+    return {"units": 0.0, "invested": 0.0, "buy_month": None, "buy_count": 0}
+
+
 def load_state():
+    st = {}
     if os.path.exists(STATE_FILE):
         with open(STATE_FILE) as f:
-            return json.load(f)
-    return {
-        "balance": STARTING_BALANCE,
-        "positions": {},
-        "trade_history": [],
-        "started_at": datetime.now(timezone.utc).isoformat(),
-    }
+            st = json.load(f)
+    st.setdefault("balance", STARTING_BALANCE)
+    st.setdefault("positions", {})
+    st.setdefault("trade_history", [])
+    st.setdefault("contrib_month", None)
+    # old states predate contributions; the starting balance was the only funding
+    st.setdefault("total_contributed", STARTING_BALANCE)
+    if "started_at" not in st:
+        st["started_at"] = datetime.now(timezone.utc).isoformat()
+    return st
 
 
 def save_state(state):
@@ -52,25 +108,10 @@ def save_state(state):
         json.dump(state, f, indent=2)
 
 
-def simple_momentum_signal(prices, state):
-    """
-    Very simple example signal: placeholder for your own logic.
-    In a real workflow you'd compute indicators from historical candles.
-    Here we just log prices and do NOT auto-trade aggressively.
-
-    Returns list of (symbol, side, reason) suggestions.
-    """
-    suggestions = []
-    # Example: if we have no position, suggest watching, not trading.
-    # Replace this with your tested strategy.
-    for sym, price in prices.items():
-        suggestions.append((sym, "hold", f"price=${price:,.2f} - no auto-trade in safe mode"))
-    return suggestions
-
-
 def main():
-    print(f"[{datetime.now(timezone.utc).isoformat()}] Starting paper trading run")
-    print(f"Starting balance: ${STARTING_BALANCE:.2f}, max risk per trade: {MAX_RISK_PER_TRADE_PCT}%")
+    now = datetime.now(timezone.utc)
+    month = now.strftime("%Y-%m")
+    print(f"[{now.isoformat()}] Starting paper trading run (DCA value strategy)")
     print("MODE: PAPER TRADING ONLY - no real orders placed")
 
     try:
@@ -80,36 +121,126 @@ def main():
         sys.exit(1)
 
     state = load_state()
-    signals = simple_momentum_signal(prices, state)
+    actions = []
+    signals = []
 
-    print("\nPrices:")
-    for sym, price in prices.items():
-        print(f"  {sym}: ${price:,.2f}")
+    # 1) monthly contribution, exactly once per calendar month
+    if state.get("contrib_month") != month:
+        state["balance"] += MONTHLY_CONTRIB
+        state["total_contributed"] += MONTHLY_CONTRIB
+        state["contrib_month"] = month
+        actions.append(f"contributed ${MONTHLY_CONTRIB:.2f} paper cash for {month}")
+        print(f"Monthly contribution: +${MONTHLY_CONTRIB:.2f} (month {month})")
 
-    print("\nSignals (paper only):")
-    for sym, side, reason in signals:
-        print(f"  {sym}: {side} - {reason}")
+    # 2) moving averages (one Yahoo request per coin)
+    mas = {}
+    for i, sym in enumerate(SYMBOLS):
+        mas[sym] = fetch_ma(sym)
+        if i < len(SYMBOLS) - 1:
+            time.sleep(2)
 
-    # Risk reminder
-    risk_per_trade_dollars = state["balance"] * (MAX_RISK_PER_TRADE_PCT / 100)
-    print(f"\nRisk controls:")
-    print(f"  Balance: ${state['balance']:.2f}")
-    print(f"  Max risk per trade: ${risk_per_trade_dollars:.2f} ({MAX_RISK_PER_TRADE_PCT}%)")
-    print(f"  To turn $50 into $500 you need 10x. That implies risking ruin.")
-    print(f"  This bot will NOT use leverage by default.")
+    # 3) sells first: full exit at +30% over the coin's DCA
+    for sym in SYMBOLS:
+        price = prices.get(sym)
+        if price is None:
+            continue
+        pos = state["positions"].get(sym) or blank_position()
+        if pos["units"] <= 0:
+            continue
+        dca = pos["invested"] / pos["units"]
+        if price >= dca * TAKE_PROFIT_MULT:
+            proceeds = pos["units"] * price
+            pnl = proceeds - pos["invested"]
+            state["balance"] += proceeds
+            actions.append(
+                f"SOLD {sym}: {pos['units']:.6f} @ ${price:,.2f} = ${proceeds:,.2f} "
+                f"(DCA ${dca:,.2f}, pnl ${pnl:+,.2f})")
+            signals.append((sym, "sell",
+                            f"price ${price:,.2f} >= 30% over DCA ${dca:,.2f}"))
+            state["positions"][sym] = {"units": 0.0, "invested": 0.0,
+                                       "buy_month": pos.get("buy_month"),
+                                       "buy_count": pos.get("buy_count", 0)}
 
-    # Append a log entry
+    # 4) buys: $50, max 2 per coin per month, only below the 100-week MA
+    for sym in SYMBOLS:
+        price = prices.get(sym)
+        if price is None:
+            continue
+        ma = mas.get(sym)
+        pos = state["positions"].get(sym)
+        if pos is None:
+            pos = blank_position()
+            state["positions"][sym] = pos
+        if pos.get("buy_month") != month:
+            pos["buy_month"] = month
+            pos["buy_count"] = 0
+        dca = pos["invested"] / pos["units"] if pos["units"] > 0 else None
+        if ma is None:
+            signals.append((sym, "hold",
+                            f"price ${price:,.2f} - no 100-week MA yet (short history)"))
+        elif price >= ma:
+            signals.append((sym, "hold",
+                            f"price ${price:,.2f} above 100-week MA ${ma:,.2f}"))
+        elif pos["buy_count"] >= MAX_BUYS_PER_MONTH:
+            signals.append((sym, "hold",
+                            f"price ${price:,.2f} below MA but monthly buy cap reached"))
+        elif state["balance"] < BUY_USD:
+            signals.append((sym, "hold",
+                            f"price ${price:,.2f} below MA but cash ${state['balance']:.2f} < ${BUY_USD:.0f}"))
+        else:
+            units = BUY_USD / price
+            pos["units"] += units
+            pos["invested"] += BUY_USD
+            pos["buy_count"] += 1
+            state["balance"] -= BUY_USD
+            new_dca = pos["invested"] / pos["units"]
+            actions.append(
+                f"BOUGHT {sym}: {units:.6f} @ ${price:,.2f} = ${BUY_USD:.2f} "
+                f"(below 100-week MA ${ma:,.2f}; DCA now ${new_dca:,.2f})")
+            signals.append((sym, "buy",
+                            f"${BUY_USD:.0f} below 100-week MA ${ma:,.2f}"))
+
+    print("\nPrices vs 100-week MA:")
+    for sym in SYMBOLS:
+        price = prices.get(sym)
+        ma = mas.get(sym)
+        if price is None:
+            print(f"  {sym}: no price")
+        elif ma is None:
+            print(f"  {sym}: ${price:,.2f}  (MA unavailable)")
+        else:
+            tag = "BELOW" if price < ma else "above"
+            print(f"  {sym}: ${price:,.2f} vs MA ${ma:,.2f} [{tag}]")
+
+    if actions:
+        print("\nActions:")
+        for a in actions:
+            print(f"  {a}")
+    else:
+        print("\nNo trades this run.")
+
+    open_value = sum(
+        (state["positions"].get(s) or blank_position())["units"] * prices[s]
+        for s in SYMBOLS
+        if s in prices and (state["positions"].get(s) or {}).get("units"))
+    equity = state["balance"] + open_value
+    print(f"\nCash: ${state['balance']:,.2f} | Open positions: ${open_value:,.2f} | "
+          f"Equity: ${equity:,.2f} | Contributed: ${state['total_contributed']:,.2f}")
+
     log_entry = {
-        "at": datetime.now(timezone.utc).isoformat(),
+        "at": now.isoformat(),
         "prices": prices,
-        "balance": state["balance"],
-        "signals": [{"symbol": s, "side": sd, "reason": r} for s, sd, r in signals],
+        "balance": round(state["balance"], 2),
+        "total_contributed": round(state["total_contributed"], 2),
+        "equity": round(equity, 2),
+        "actions": actions,
+        "signals": [{"symbol": s, "side": sd, "reason": r}
+                    for s, sd, r in signals],
     }
     state["trade_history"].append(log_entry)
-    # keep history bounded
     state["trade_history"] = state["trade_history"][-200:]
     save_state(state)
-    print(f"\nState saved to {STATE_FILE}")
+    print(f"State saved to {STATE_FILE}")
 
 
 if __name__ == "__main__":
