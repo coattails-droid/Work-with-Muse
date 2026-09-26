@@ -18,7 +18,7 @@ on:
       period_contrib:
         description: 'Paper cash contributed at the start of each two-week period'
         required: false
-        default: '100'
+        default: '50'
 
 permissions:
   contents: read
@@ -39,7 +39,7 @@ jobs:
       - name: Run backtest
         env:
           TAKE_PROFIT_MULT: ${{ github.event.inputs.take_profit_mult || '1.30' }}
-          PERIOD_CONTRIB: ${{ github.event.inputs.period_contrib || '100' }}
+          PERIOD_CONTRIB: ${{ github.event.inputs.period_contrib || '50' }}
         run: python bot/backtest.py --days ${{ github.event.inputs.days || '730' }} --out backtest_results.json
 
       - name: Upload results
