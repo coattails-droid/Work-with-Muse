@@ -21,7 +21,10 @@ If you do trade real money, never trade money you can't afford to lose.
 - `bot/paper_trader.py` - paper trading bot (stdlib only, no API keys needed)
   - Fetches prices from CoinGecko public API
   - Logs signals and balance to `bot/paper_state.json`
-  - Enforces max risk per trade (default 2%)
+  - Strategy (2026-09-26): $100 paper cash contributed every two weeks; up to
+    two $50 buys per two-week period, only in coins below their 100-week
+    (700-day) moving average (no buys if none qualify); a coin's full
+    position sells only at +30% over its average buy price
   - Safe mode: does NOT auto-trade aggressively
 
 - `.github/workflows/crypto-agent.yml` - GitHub Actions workflow
@@ -45,10 +48,13 @@ If you do trade real money, never trade money you can't afford to lose.
   - Manual trigger supports a custom threshold and a dry-run mode
 
 - `bot/backtest.py` + `.github/workflows/backtest.yml` - strategy backtest
-  - Manually-triggered replay of the "buy the dips" paper strategy over
+  - Manually-triggered replay of the biweekly DCA-value paper strategy over
     historical daily prices (no real orders possible)
   - Compares against an equal-split buy-and-hold baseline; uploads a
     results file as a run artifact
+  - `--weekday-analysis` replays the strategy once per weekday (buys only on
+    that weekday) and writes `bot/weekday_analysis.json` naming the best
+    weekday to buy
 
 - `bot/news_digest.py` + `.github/workflows/news-digest.yml` - daily news digest
   - Every morning pulls crypto RSS feeds (CoinDesk, CoinTelegraph, Decrypt),
