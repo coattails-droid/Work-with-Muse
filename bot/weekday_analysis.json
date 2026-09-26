@@ -1,0 +1,69 @@
+{
+  "generated_at": "2026-09-26T16:57:29.954689+00:00",
+  "strategy": "DCA value: up to 2x $50 buys per two-week period, only below the 700-day MA, $100 contributed per period, sell full position at +30% over coin DCA",
+  "window": {
+    "start": "2024-09-27",
+    "end": "2026-09-26",
+    "days": 730
+  },
+  "per_weekday": {
+    "Monday": {
+      "ending_equity": 6212.82,
+      "total_contributed": 5350.0,
+      "return_pct": 16.13,
+      "buys": 88,
+      "sells": 9,
+      "max_drawdown_pct": 12.75
+    },
+    "Tuesday": {
+      "ending_equity": 6207.42,
+      "total_contributed": 5350.0,
+      "return_pct": 16.03,
+      "buys": 89,
+      "sells": 8,
+      "max_drawdown_pct": 12.33
+    },
+    "Wednesday": {
+      "ending_equity": 6198.82,
+      "total_contributed": 5350.0,
+      "return_pct": 15.87,
+      "buys": 88,
+      "sells": 7,
+      "max_drawdown_pct": 13.54
+    },
+    "Thursday": {
+      "ending_equity": 6225.02,
+      "total_contributed": 5350.0,
+      "return_pct": 16.36,
+      "buys": 89,
+      "sells": 8,
+      "max_drawdown_pct": 12.8
+    },
+    "Friday": {
+      "ending_equity": 6319.96,
+      "total_contributed": 5350.0,
+      "return_pct": 18.13,
+      "buys": 89,
+      "sells": 8,
+      "max_drawdown_pct": 12.36
+    },
+    "Saturday": {
+      "ending_equity": 6278.8,
+      "total_contributed": 5350.0,
+      "return_pct": 17.36,
+      "buys": 89,
+      "sells": 7,
+      "max_drawdown_pct": 12.61
+    },
+    "Sunday": {
+      "ending_equity": 6311.79,
+      "total_contributed": 5350.0,
+      "return_pct": 17.98,
+      "buys": 87,
+      "sells": 8,
+      "max_drawdown_pct": 12.24
+    }
+  },
+  "best_weekday": "Friday",
+  "note": "Buys restricted to one weekday per simulation run; sells ran every day in all runs. Simulated past performance does not predict future results. Educational only, not financial advice."
+}
