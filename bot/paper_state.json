@@ -26,14 +26,14 @@
       "buy_count": 0
     },
     "kaspa": {
-      "units": 0.0,
-      "invested": 0.0,
+      "units": 1022.7297598200978,
+      "invested": 50.0,
       "buy_month": "2026-09",
       "buy_count": 0
     },
     "pyth-network": {
-      "units": 0.0,
-      "invested": 0.0,
+      "units": 631.8636185565707,
+      "invested": 50.0,
       "buy_month": "2026-09",
       "buy_count": 0
     },
@@ -2187,9 +2187,87 @@
           "reason": "price $0.08 - no 100-week MA yet (short history)"
         }
       ]
+    },
+    {
+      "at": "2026-09-26T20:10:28.946534+00:00",
+      "prices": {
+        "bitcoin": 84028,
+        "ethereum": 2683.53,
+        "ripple": 1.52,
+        "bitcoin-cash": 336.46,
+        "kaspa": 0.04888877,
+        "pyth-network": 0.079131,
+        "near": 4.85,
+        "bittensor": 319.94,
+        "tao-bot": 0.083928
+      },
+      "balance": 0.0,
+      "total_contributed": 250.0,
+      "equity": 248.19,
+      "actions": [
+        "contributed $100.00 paper cash for period 2026-P19",
+        "BOUGHT kaspa: 1022.729760 @ $0.05 = $50.00 (28.5% below 100-week MA $0.07; DCA now $0.05; Saturday)",
+        "BOUGHT pyth-network: 631.863619 @ $0.08 = $50.00 (41.7% below 100-week MA $0.14; DCA now $0.08; Saturday)"
+      ],
+      "signals": [
+        {
+          "symbol": "bitcoin",
+          "side": "hold",
+          "reason": "price $84,028.00 below MA but not among the two deepest below MA this period"
+        },
+        {
+          "symbol": "ethereum",
+          "side": "hold",
+          "reason": "price $2,683.53 below MA but not among the two deepest below MA this period"
+        },
+        {
+          "symbol": "ripple",
+          "side": "hold",
+          "reason": "price $1.52 below MA but not among the two deepest below MA this period"
+        },
+        {
+          "symbol": "bitcoin-cash",
+          "side": "hold",
+          "reason": "price $336.46 below MA but not among the two deepest below MA this period"
+        },
+        {
+          "symbol": "kaspa",
+          "side": "buy",
+          "reason": "$50 below 100-week MA $0.07",
+          "weekday": "Saturday"
+        },
+        {
+          "symbol": "pyth-network",
+          "side": "buy",
+          "reason": "$50 below 100-week MA $0.14",
+          "weekday": "Saturday"
+        },
+        {
+          "symbol": "near",
+          "side": "hold",
+          "reason": "price $4.85 above 100-week MA $2.63"
+        },
+        {
+          "symbol": "bittensor",
+          "side": "hold",
+          "reason": "price $319.94 below MA but not among the two deepest below MA this period"
+        },
+        {
+          "symbol": "tao-bot",
+          "side": "hold",
+          "reason": "price $0.08 - no 100-week MA yet (short history)"
+        }
+      ]
     }
   ],
   "started_at": "2026-09-18T12:40:21.980492+00:00",
   "contrib_month": "2026-09",
-  "total_contributed": 150.0
+  "total_contributed": 250.0,
+  "contrib_period": "2026-P19",
+  "buy_period": "2026-P19",
+  "buys_this_period": 2,
+  "bought_this_period": [
+    "kaspa",
+    "pyth-network"
+  ]
 }
