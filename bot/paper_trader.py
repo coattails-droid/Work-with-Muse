@@ -8,9 +8,11 @@ Strategy (set 2026-09-26, biweekly):
   - Up to two $50 buys per two-week period, and ONLY in coins whose price
     is below their 100-week (700-day) moving average. If no coin is below
     its MA, there are no buys that period.
-  - INTERIM dispersement (pending Calvin's choice, 2026-09-26): the first
-    two qualifying coins in symbol order, one $50 buy each -- never two
-    buys in the same coin in one period.
+  - If EVERY tracked coin is below its 100-week MA in a period, the $100
+    is instead split equally across all of them (equal USD per coin).
+  - Subset case (>2 qualifiers): INTERIM tie-break (pending Calvin's
+    choice): the first two qualifying coins in symbol order, one $50 buy
+    each -- never two buys in the same coin in one period.
   - Sell a coin's entire position only when its price is >= 30% above that
     coin's average buy price (its DCA).
   - The weekday of every buy is logged.
@@ -179,51 +181,88 @@ def main():
                                        "buy_month": pos.get("buy_month"),
                                        "buy_count": pos.get("buy_count", 0)}
 
-    # 4) buys: up to two $50 buys per two-week period, only in coins below
-    #    the 100-week MA. INTERIM dispersement: first two qualifying coins in
-    #    symbol order, one buy each (never twice in one coin per period).
+    # 4) buys: only in coins below the 100-week MA. If EVERY tracked coin
+    #    is below its MA, the period's $100 is split equally across all of
+    #    them (equal USD per coin). Otherwise up to two $50 buys; INTERIM
+    #    tie-break for >2 qualifiers: first two in symbol order, one buy
+    #    each (never twice in one coin per period).
     bought = set(state.get("bought_this_period") or [])
-    for sym in SYMBOLS:
-        price = prices.get(sym)
-        if price is None:
-            continue
-        ma = mas.get(sym)
-        pos = state["positions"].get(sym)
-        if pos is None:
-            pos = blank_position()
-            state["positions"][sym] = pos
-        dca = pos["invested"] / pos["units"] if pos["units"] > 0 else None
-        if ma is None:
-            signals.append((sym, "hold",
-                            f"price ${price:,.2f} - no 100-week MA yet (short history)"))
-        elif price >= ma:
-            signals.append((sym, "hold",
-                            f"price ${price:,.2f} above 100-week MA ${ma:,.2f}"))
-        elif sym in bought:
-            signals.append((sym, "hold",
-                            f"price ${price:,.2f} below MA but already bought this period"))
-        elif state["buys_this_period"] >= MAX_BUYS_PER_PERIOD:
-            signals.append((sym, "hold",
-                            f"price ${price:,.2f} below MA but period buy cap "
-                            f"({MAX_BUYS_PER_PERIOD}) reached"))
-        elif state["balance"] < BUY_USD:
-            signals.append((sym, "hold",
-                            f"price ${price:,.2f} below MA but cash ${state['balance']:.2f} < ${BUY_USD:.0f}"))
-        else:
-            units = BUY_USD / price
+    with_data = [s for s in SYMBOLS
+                  if prices.get(s) is not None and mas.get(s) is not None]
+    qualifiers = [s for s in with_data
+                  if prices[s] < mas[s] and s not in bought]
+    all_below = (len(with_data) == len(SYMBOLS)
+                 and len(qualifiers) == len(SYMBOLS))
+    if all_below:
+        spend = min(state["balance"], PERIOD_CONTRIB)
+        total_cents = int(round(spend * 100))
+        n = len(qualifiers)
+        base, extra = divmod(total_cents, n)
+        for i, sym in enumerate(qualifiers):
+            amount = (base + (1 if i < extra else 0)) / 100.0
+            price = prices[sym]
+            ma = mas[sym]
+            pos = state["positions"].get(sym)
+            if pos is None:
+                pos = blank_position()
+                state["positions"][sym] = pos
+            units = amount / price
             pos["units"] += units
-            pos["invested"] += BUY_USD
-            state["buys_this_period"] += 1
+            pos["invested"] += amount
             bought.add(sym)
-            state["bought_this_period"] = sorted(bought)
-            state["balance"] -= BUY_USD
+            state["balance"] -= amount
             new_dca = pos["invested"] / pos["units"]
             actions.append(
-                f"BOUGHT {sym}: {units:.6f} @ ${price:,.2f} = ${BUY_USD:.2f} "
-                f"(below 100-week MA ${ma:,.2f}; DCA now ${new_dca:,.2f}; {weekday})")
+                f"BOUGHT {sym}: {units:.6f} @ ${price:,.2f} = ${amount:.2f} "
+                f"(equal split, all below 100-week MA ${ma:,.2f}; "
+                f"DCA now ${new_dca:,.2f}; {weekday})")
             signals.append((sym, "buy",
-                            f"${BUY_USD:.0f} below 100-week MA ${ma:,.2f}",
+                            f"${amount:.2f} equal split, all below 100-week MA",
                             weekday))
+        state["buys_this_period"] = n
+        state["bought_this_period"] = sorted(bought)
+    else:
+        for sym in SYMBOLS:
+            price = prices.get(sym)
+            if price is None:
+                continue
+            ma = mas.get(sym)
+            pos = state["positions"].get(sym)
+            if pos is None:
+                pos = blank_position()
+                state["positions"][sym] = pos
+            dca = pos["invested"] / pos["units"] if pos["units"] > 0 else None
+            if ma is None:
+                signals.append((sym, "hold",
+                                f"price ${price:,.2f} - no 100-week MA yet (short history)"))
+            elif price >= ma:
+                signals.append((sym, "hold",
+                                f"price ${price:,.2f} above 100-week MA ${ma:,.2f}"))
+            elif sym in bought:
+                signals.append((sym, "hold",
+                                f"price ${price:,.2f} below MA but already bought this period"))
+            elif state["buys_this_period"] >= MAX_BUYS_PER_PERIOD:
+                signals.append((sym, "hold",
+                                f"price ${price:,.2f} below MA but period buy cap "
+                                f"({MAX_BUYS_PER_PERIOD}) reached"))
+            elif state["balance"] < BUY_USD:
+                signals.append((sym, "hold",
+                                f"price ${price:,.2f} below MA but cash ${state['balance']:.2f} < ${BUY_USD:.0f}"))
+            else:
+                units = BUY_USD / price
+                pos["units"] += units
+                pos["invested"] += BUY_USD
+                state["buys_this_period"] += 1
+                bought.add(sym)
+                state["bought_this_period"] = sorted(bought)
+                state["balance"] -= BUY_USD
+                new_dca = pos["invested"] / pos["units"]
+                actions.append(
+                    f"BOUGHT {sym}: {units:.6f} @ ${price:,.2f} = ${BUY_USD:.2f} "
+                    f"(below 100-week MA ${ma:,.2f}; DCA now ${new_dca:,.2f}; {weekday})")
+                signals.append((sym, "buy",
+                                f"${BUY_USD:.0f} below 100-week MA ${ma:,.2f}",
+                                weekday))
 
     print("\nPrices vs 100-week MA:")
     for sym in SYMBOLS:
