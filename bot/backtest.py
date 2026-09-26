@@ -2,12 +2,12 @@
 """Strategy backtest: DCA value strategy (paper only).
 
 Replays the live paper-trader rules over historical daily data:
-  - $100 paper contribution at the start of each two-week period ($50 start).
-  - Up to two $50 buys per two-week period, and ONLY when the coin's price
+  - $50 paper contribution at the start of each two-week period ($50 start).
+  - Up to two $25 buys per two-week period, and ONLY when the coin's price
     is below its 100-week (700-day) moving average. No buys in a period
     where no coin is below its MA. If EVERY coin is below its MA in a
-    period, the $100 is split equally across all of them (equal USD per
-    coin). Subset case: the two $50 buys go to the qualifying coins deepest
+    period, the $50 is split equally across all of them (equal USD per
+    coin). Subset case: the two $25 buys go to the qualifying coins deepest
     below their MA (largest % discount).
     No buys until the coin has 700 days of history.
   - Sell a coin's entire position only when its price reaches 30% above that
@@ -55,11 +55,11 @@ YAHOO_SYMBOLS = {
     "tao-bot": "TAOBOT-USD",
 }
 
-BUY_USD = float(os.getenv("BUY_USD", "50"))
+BUY_USD = float(os.getenv("BUY_USD", "25"))
 MAX_BUYS_PER_PERIOD = int(os.getenv("MAX_BUYS_PER_PERIOD", "2"))
 MA_DAYS = int(os.getenv("MA_DAYS", "700"))          # 100-week moving average
 TAKE_PROFIT_MULT = float(os.getenv("TAKE_PROFIT_MULT", "1.30"))
-PERIOD_CONTRIB = float(os.getenv("PERIOD_CONTRIB", "100"))
+PERIOD_CONTRIB = float(os.getenv("PERIOD_CONTRIB", "50"))
 
 
 def period_key(day):
@@ -160,8 +160,8 @@ def run_backtest(full_series, days, buy_weekday=None):
                                "pnl": round(pnl, 2)})
                 pos[c] = {"units": 0.0, "invested": 0.0}
         # 3) buys: only below the 100-week MA; nothing if no coin is below
-        #    its MA. If EVERY coin is below its MA, split the period's $100
-        #    equally across all of them. Otherwise the two $50 buys go to
+        #    its MA. If EVERY coin is below its MA, split the period's $50
+        #    equally across all of them. Otherwise the two $25 buys go to
         #    the qualifying coins deepest below their MA (largest % discount).
         if buy_weekday is None or day_dt.weekday() == buy_weekday:
             qualifiers = [c for c in COINS
