@@ -3,6 +3,10 @@ name: failure-detective
 # Watches crypto-paper-agent. When a run fails, this workflow reads the failed
 # logs, diagnoses the likely cause, and opens a GitHub issue with a suggested
 # fix. It never touches code or retries anything on its own.
+#
+# Phone notifications: if the repo secret NTFY_TOPIC is set, a push
+# notification is also sent to Calvin's phone via ntfy (https://ntfy.sh)
+# on every watched-workflow failure.
 
 on:
   workflow_run:
@@ -32,3 +36,17 @@ jobs:
           REPO: ${{ github.repository }}
           RUN_ID: ${{ github.event.workflow_run.id }}
         run: python bot/failure_detective.py
+
+      - name: Push phone notification via ntfy
+        if: ${{ always() && secrets.NTFY_TOPIC != '' }}
+        env:
+          NTFY_TOPIC: ${{ secrets.NTFY_TOPIC }}
+          WORKFLOW_NAME: ${{ github.event.workflow_run.name }}
+          RUN_URL: ${{ github.event.workflow_run.html_url }}
+        run: |
+          curl -s -o /dev/null -w "%{http_code}\n" \
+            -H "Title: Workflow failed: $WORKFLOW_NAME" \
+            -H "Priority: high" \
+            -H "Tags: warning,robot" \
+            -d "Paper-trading workflow '$WORKFLOW_NAME' failed. Details: $RUN_URL" \
+            "https://ntfy.sh/$NTFY_TOPIC"
