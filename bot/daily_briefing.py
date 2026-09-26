@@ -207,7 +207,7 @@ def main():
         f"Paper balance: ${state.get('balance', 0):.2f} "
         f"(${state.get('total_contributed', 50.0):.2f} contributed)",
         "",
-        "Strategy: $100 contributed every two weeks; up to two $50 buys per",
+        "Strategy: $50 contributed every two weeks; up to two $25 buys per",
         "period, only in coins below their 100-week moving average (no buys",
         "if none qualify); a coin's full position sells only at +30% over",
         "its average buy price.",
