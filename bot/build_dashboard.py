@@ -68,6 +68,28 @@ def load_state():
         return {}
 
 
+def weekday_note():
+    """Best-weekday-to-buy note from bot/weekday_analysis.json, if present."""
+    try:
+        with open("bot/weekday_analysis.json") as f:
+            data = json.load(f)
+    except Exception:
+        return ""
+    best = data.get("best_weekday")
+    if not best:
+        return ""
+    rows = data.get("per_weekday", {})
+    detail = ", ".join(
+        f"{d}: {rows[d]['return_pct']:+.1f}%" for d in
+        ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday",
+         "Saturday", "Sunday"] if d in rows)
+    win = data.get("window", {})
+    return (f"Best weekday to buy (2-year backtest "
+            f"{win.get('start', '')} → {win.get('end', '')}): "
+            f"<strong>{esc(best)}</strong>"
+            + (f'<div class="muted">{esc(detail)}</div>' if detail else ""))
+
+
 def digest_headlines(folder, max_n=6):
     """Latest headlines (title, url) from today's or yesterday's digest."""
     for delta in (0, 1):
@@ -302,6 +324,8 @@ def build(repo, token):
     now_utc = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
     now_et = datetime.now(ET).strftime("%Y-%m-%d %I:%M %p ET")
     pnl_cls = "up" if pnl >= 0 else "down"
+    weekday_html = weekday_note() or \
+        '<span class="muted">Weekday buy analysis not run yet.</span>'
 
     return f"""<!DOCTYPE html>
 <html lang="en">
@@ -326,6 +350,14 @@ def build(repo, token):
 <div class="card"><div class="k">Tracked coins</div><div class="v">{len(prices)}</div></div>
 <div class="card"><div class="k">Open issues</div><div class="v">{len(issues)}</div></div>
 </div>
+
+<section><h2>Strategy</h2>
+<p class="muted">Biweekly DCA value (paper only): $100 contributed every two
+weeks; up to two $50 buys per period, only in coins below their 100-week
+moving average (no buys if none qualify); a coin's full position sells only
+at +30% over its average buy price.</p>
+<p>{weekday_html}</p>
+</section>
 
 <section><h2>Balance history</h2>{balance_chart(hist, contributed)}</section>
 
