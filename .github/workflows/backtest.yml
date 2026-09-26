@@ -15,8 +15,8 @@ on:
         description: 'Exit: sell full position at this multiple of coin DCA (e.g. 1.30)'
         required: false
         default: '1.30'
-      monthly_contrib:
-        description: 'Paper cash contributed on the 1st of each month'
+      period_contrib:
+        description: 'Paper cash contributed at the start of each two-week period'
         required: false
         default: '100'
 
@@ -39,7 +39,7 @@ jobs:
       - name: Run backtest
         env:
           TAKE_PROFIT_MULT: ${{ github.event.inputs.take_profit_mult || '1.30' }}
-          MONTHLY_CONTRIB: ${{ github.event.inputs.monthly_contrib || '100' }}
+          PERIOD_CONTRIB: ${{ github.event.inputs.period_contrib || '100' }}
         run: python bot/backtest.py --days ${{ github.event.inputs.days || '730' }} --out backtest_results.json
 
       - name: Upload results
