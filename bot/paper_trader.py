@@ -1,13 +1,19 @@
 #!/usr/bin/env python3
 """Paper trading bot - DCA value strategy. Paper only: no real orders.
 
-Strategy (set 2026-09-25):
-  - $100 of paper cash is contributed on the first run of each calendar month
-    (tracked in state, so it happens exactly once per month).
-  - Buy $50 of a coin, at most twice per coin per calendar month, and only
-    when the coin's price is below its 100-week (700-day) moving average.
+Strategy (set 2026-09-26, biweekly):
+  - $100 of paper cash is contributed on the first run of each two-week
+    period (tracked in state, so it happens exactly once per period).
+    NOTE: this roughly doubles the old $100/month pace (~$200/month).
+  - Up to two $50 buys per two-week period, and ONLY in coins whose price
+    is below their 100-week (700-day) moving average. If no coin is below
+    its MA, there are no buys that period.
+  - INTERIM dispersement (pending Calvin's choice, 2026-09-26): the first
+    two qualifying coins in symbol order, one $50 buy each -- never two
+    buys in the same coin in one period.
   - Sell a coin's entire position only when its price is >= 30% above that
     coin's average buy price (its DCA).
+  - The weekday of every buy is logged.
   - No leverage. Cash earns nothing.
 
 Live prices come from CoinGecko; the moving average uses Yahoo Finance
@@ -23,10 +29,10 @@ from datetime import datetime, timezone
 
 STARTING_BALANCE = float(os.getenv("STARTING_BALANCE", "50"))
 BUY_USD = float(os.getenv("BUY_USD", "50"))
-MAX_BUYS_PER_MONTH = int(os.getenv("MAX_BUYS_PER_MONTH", "2"))
+MAX_BUYS_PER_PERIOD = int(os.getenv("MAX_BUYS_PER_PERIOD", "2"))
 MA_DAYS = int(os.getenv("MA_DAYS", "700"))
 TAKE_PROFIT_MULT = float(os.getenv("TAKE_PROFIT_MULT", "1.30"))
-MONTHLY_CONTRIB = float(os.getenv("MONTHLY_CONTRIB", "100"))
+PERIOD_CONTRIB = float(os.getenv("PERIOD_CONTRIB", "100"))
 SYMBOLS = [s.strip() for s in os.getenv(
     "SYMBOLS",
     "bitcoin,ethereum,ripple,bitcoin-cash,kaspa,pyth-network,near,bittensor,tao-bot"
@@ -86,6 +92,13 @@ def blank_position():
     return {"units": 0.0, "invested": 0.0, "buy_month": None, "buy_count": 0}
 
 
+def period_key(dt):
+    """Two-week period key: ISO year + floor((ISO week - 1) / 2), exactly 26
+    per 52-week year, aligned to week boundaries."""
+    iso_year, iso_week, _ = dt.isocalendar()
+    return f"{iso_year}-P{(iso_week - 1) // 2:02d}"
+
+
 def load_state():
     st = {}
     if os.path.exists(STATE_FILE):
@@ -110,7 +123,8 @@ def save_state(state):
 
 def main():
     now = datetime.now(timezone.utc)
-    month = now.strftime("%Y-%m")
+    period = period_key(now)
+    weekday = now.strftime("%A")
     print(f"[{now.isoformat()}] Starting paper trading run (DCA value strategy)")
     print("MODE: PAPER TRADING ONLY - no real orders placed")
 
@@ -124,13 +138,17 @@ def main():
     actions = []
     signals = []
 
-    # 1) monthly contribution, exactly once per calendar month
-    if state.get("contrib_month") != month:
-        state["balance"] += MONTHLY_CONTRIB
-        state["total_contributed"] += MONTHLY_CONTRIB
-        state["contrib_month"] = month
-        actions.append(f"contributed ${MONTHLY_CONTRIB:.2f} paper cash for {month}")
-        print(f"Monthly contribution: +${MONTHLY_CONTRIB:.2f} (month {month})")
+    # 1) biweekly contribution, exactly once per two-week period
+    if state.get("contrib_period") != period:
+        state["balance"] += PERIOD_CONTRIB
+        state["total_contributed"] += PERIOD_CONTRIB
+        state["contrib_period"] = period
+        actions.append(f"contributed ${PERIOD_CONTRIB:.2f} paper cash for period {period}")
+        print(f"Biweekly contribution: +${PERIOD_CONTRIB:.2f} (period {period})")
+    if state.get("buy_period") != period:
+        state["buy_period"] = period
+        state["buys_this_period"] = 0
+        state["bought_this_period"] = []
 
     # 2) moving averages (one Yahoo request per coin)
     mas = {}
@@ -161,7 +179,10 @@ def main():
                                        "buy_month": pos.get("buy_month"),
                                        "buy_count": pos.get("buy_count", 0)}
 
-    # 4) buys: $50, max 2 per coin per month, only below the 100-week MA
+    # 4) buys: up to two $50 buys per two-week period, only in coins below
+    #    the 100-week MA. INTERIM dispersement: first two qualifying coins in
+    #    symbol order, one buy each (never twice in one coin per period).
+    bought = set(state.get("bought_this_period") or [])
     for sym in SYMBOLS:
         price = prices.get(sym)
         if price is None:
@@ -171,9 +192,6 @@ def main():
         if pos is None:
             pos = blank_position()
             state["positions"][sym] = pos
-        if pos.get("buy_month") != month:
-            pos["buy_month"] = month
-            pos["buy_count"] = 0
         dca = pos["invested"] / pos["units"] if pos["units"] > 0 else None
         if ma is None:
             signals.append((sym, "hold",
@@ -181,9 +199,13 @@ def main():
         elif price >= ma:
             signals.append((sym, "hold",
                             f"price ${price:,.2f} above 100-week MA ${ma:,.2f}"))
-        elif pos["buy_count"] >= MAX_BUYS_PER_MONTH:
+        elif sym in bought:
             signals.append((sym, "hold",
-                            f"price ${price:,.2f} below MA but monthly buy cap reached"))
+                            f"price ${price:,.2f} below MA but already bought this period"))
+        elif state["buys_this_period"] >= MAX_BUYS_PER_PERIOD:
+            signals.append((sym, "hold",
+                            f"price ${price:,.2f} below MA but period buy cap "
+                            f"({MAX_BUYS_PER_PERIOD}) reached"))
         elif state["balance"] < BUY_USD:
             signals.append((sym, "hold",
                             f"price ${price:,.2f} below MA but cash ${state['balance']:.2f} < ${BUY_USD:.0f}"))
@@ -191,14 +213,17 @@ def main():
             units = BUY_USD / price
             pos["units"] += units
             pos["invested"] += BUY_USD
-            pos["buy_count"] += 1
+            state["buys_this_period"] += 1
+            bought.add(sym)
+            state["bought_this_period"] = sorted(bought)
             state["balance"] -= BUY_USD
             new_dca = pos["invested"] / pos["units"]
             actions.append(
                 f"BOUGHT {sym}: {units:.6f} @ ${price:,.2f} = ${BUY_USD:.2f} "
-                f"(below 100-week MA ${ma:,.2f}; DCA now ${new_dca:,.2f})")
+                f"(below 100-week MA ${ma:,.2f}; DCA now ${new_dca:,.2f}; {weekday})")
             signals.append((sym, "buy",
-                            f"${BUY_USD:.0f} below 100-week MA ${ma:,.2f}"))
+                            f"${BUY_USD:.0f} below 100-week MA ${ma:,.2f}",
+                            weekday))
 
     print("\nPrices vs 100-week MA:")
     for sym in SYMBOLS:
@@ -227,6 +252,12 @@ def main():
     print(f"\nCash: ${state['balance']:,.2f} | Open positions: ${open_value:,.2f} | "
           f"Equity: ${equity:,.2f} | Contributed: ${state['total_contributed']:,.2f}")
 
+    def sig_to_dict(t):
+        d = {"symbol": t[0], "side": t[1], "reason": t[2]}
+        if len(t) > 3:  # buys also log their weekday
+            d["weekday"] = t[3]
+        return d
+
     log_entry = {
         "at": now.isoformat(),
         "prices": prices,
@@ -234,8 +265,7 @@ def main():
         "total_contributed": round(state["total_contributed"], 2),
         "equity": round(equity, 2),
         "actions": actions,
-        "signals": [{"symbol": s, "side": sd, "reason": r}
-                    for s, sd, r in signals],
+        "signals": [sig_to_dict(t) for t in signals],
     }
     state["trade_history"].append(log_entry)
     state["trade_history"] = state["trade_history"][-200:]
