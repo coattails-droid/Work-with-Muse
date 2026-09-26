@@ -7,8 +7,8 @@ Replays the live paper-trader rules over historical daily data:
     is below its 100-week (700-day) moving average. No buys in a period
     where no coin is below its MA. If EVERY coin is below its MA in a
     period, the $100 is split equally across all of them (equal USD per
-    coin). Subset case (>2 qualifiers): INTERIM dispersement, the first two
-    qualifying coins in coin order, one $50 buy each.
+    coin). Subset case: the two $50 buys go to the qualifying coins deepest
+    below their MA (largest % discount).
     No buys until the coin has 700 days of history.
   - Sell a coin's entire position only when its price reaches 30% above that
     coin's average buy price (its DCA).
@@ -161,9 +161,8 @@ def run_backtest(full_series, days, buy_weekday=None):
                 pos[c] = {"units": 0.0, "invested": 0.0}
         # 3) buys: only below the 100-week MA; nothing if no coin is below
         #    its MA. If EVERY coin is below its MA, split the period's $100
-        #    equally across all of them. Otherwise up to two $50 buys;
-        #    INTERIM dispersement for >2 qualifiers: first two in coin order,
-        #    one buy each.
+        #    equally across all of them. Otherwise the two $50 buys go to
+        #    the qualifying coins deepest below their MA (largest % discount).
         if buy_weekday is None or day_dt.weekday() == buy_weekday:
             qualifiers = [c for c in COINS
                           if (price_at(c, day) is not None
@@ -191,17 +190,19 @@ def run_backtest(full_series, days, buy_weekday=None):
                                    "dca": round(p["invested"] / p["units"], 4)})
                 buys_this_period = len(qualifiers)
             else:
-                for c in COINS:
+                # Subset case: rank qualifiers by depth below the MA
+                # (deepest discount first); the buys go to the top-ranked.
+                ranked = sorted(
+                    qualifiers,
+                    key=lambda c: price_at(c, day) / ma_at(c, day))
+                for c in ranked:
                     if buys_this_period >= MAX_BUYS_PER_PERIOD:
                         break
-                    if c in bought_this_period:
-                        continue
                     price = price_at(c, day)
                     if price is None:
                         continue
                     p = pos[c]
-                    ma = ma_at(c, day)
-                    if (ma is not None and price < ma and cash >= BUY_USD):
+                    if cash >= BUY_USD:
                         units = BUY_USD / price
                         p["units"] += units
                         p["invested"] += BUY_USD
