@@ -2057,6 +2057,71 @@
           "reason": "price $0.08 - no 100-week MA yet (short history)"
         }
       ]
+    },
+    {
+      "at": "2026-09-26T12:13:40.887769+00:00",
+      "prices": {
+        "bitcoin": 84112,
+        "ethereum": 2688.11,
+        "ripple": 1.54,
+        "bitcoin-cash": 337.55,
+        "kaspa": 0.04483871,
+        "pyth-network": 0.078318,
+        "near": 4.92,
+        "bittensor": 330.74,
+        "tao-bot": 0.084057
+      },
+      "balance": 0.0,
+      "total_contributed": 150.0,
+      "equity": 148.97,
+      "actions": [],
+      "signals": [
+        {
+          "symbol": "bitcoin",
+          "side": "hold",
+          "reason": "price $84,112.00 below MA but cash $0.00 < $50"
+        },
+        {
+          "symbol": "ethereum",
+          "side": "hold",
+          "reason": "price $2,688.11 below MA but cash $0.00 < $50"
+        },
+        {
+          "symbol": "ripple",
+          "side": "hold",
+          "reason": "price $1.54 below MA but cash $0.00 < $50"
+        },
+        {
+          "symbol": "bitcoin-cash",
+          "side": "hold",
+          "reason": "price $337.55 below MA but cash $0.00 < $50"
+        },
+        {
+          "symbol": "kaspa",
+          "side": "hold",
+          "reason": "price $0.04 below MA but cash $0.00 < $50"
+        },
+        {
+          "symbol": "pyth-network",
+          "side": "hold",
+          "reason": "price $0.08 below MA but cash $0.00 < $50"
+        },
+        {
+          "symbol": "near",
+          "side": "hold",
+          "reason": "price $4.92 above 100-week MA $2.63"
+        },
+        {
+          "symbol": "bittensor",
+          "side": "hold",
+          "reason": "price $330.74 above 100-week MA $324.14"
+        },
+        {
+          "symbol": "tao-bot",
+          "side": "hold",
+          "reason": "price $0.08 - no 100-week MA yet (short history)"
+        }
+      ]
     }
   ],
   "started_at": "2026-09-18T12:40:21.980492+00:00",
