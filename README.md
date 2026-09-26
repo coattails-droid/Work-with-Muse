@@ -21,10 +21,10 @@ If you do trade real money, never trade money you can't afford to lose.
 - `bot/paper_trader.py` - paper trading bot (stdlib only, no API keys needed)
   - Fetches prices from CoinGecko public API
   - Logs signals and balance to `bot/paper_state.json`
-  - Strategy (2026-09-26): $100 paper cash contributed every two weeks; up to
-    two $50 buys per two-week period, only in coins below their 100-week
+  - Strategy (2026-09-26): $50 paper cash contributed every two weeks; up to
+    two $25 buys per two-week period, only in coins below their 100-week
     (700-day) moving average (no buys if none qualify); if EVERY coin is
-    below its MA, the $100 is split equally across all of them; a coin's
+    below its MA, the $50 is split equally across all of them; a coin's
     full position sells only at +30% over its average buy price
   - Safe mode: does NOT auto-trade aggressively
 
