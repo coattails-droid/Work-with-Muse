@@ -162,6 +162,28 @@ def fetch_model_news(max_models=6):
     return None, []
 
 
+def fetch_weekday_note():
+    """Best-weekday-to-buy note from bot/weekday_analysis.json in the repo.
+
+    Returns "" when the analysis hasn't been run; the briefing sends
+    without it.
+    """
+    try:
+        data = gh_get(f"/repos/{OWNER}/{REPO}/contents/bot/weekday_analysis.json?ref=main")
+    except Exception:
+        return ""
+    try:
+        info = json.loads(base64.b64decode(data["content"]).decode())
+    except Exception:
+        return ""
+    best = info.get("best_weekday")
+    if not best:
+        return ""
+    win = info.get("window", {})
+    return (f"Best weekday to buy (2-year backtest "
+            f"{win.get('start', '')} to {win.get('end', '')}): {best}.")
+
+
 def main():
     if not gmail_connected():
         print(
@@ -184,6 +206,16 @@ def main():
         "Crypto paper-trading briefing (paper only — no real money moves)",
         f"Paper balance: ${state.get('balance', 0):.2f} "
         f"(${state.get('total_contributed', 50.0):.2f} contributed)",
+        "",
+        "Strategy: $100 contributed every two weeks; up to two $50 buys per",
+        "period, only in coins below their 100-week moving average (no buys",
+        "if none qualify); a coin's full position sells only at +30% over",
+        "its average buy price.",
+    ]
+    wn = fetch_weekday_note()
+    if wn:
+        lines.append(wn)
+    lines += [
         "",
         "Latest prices:",
     ]
