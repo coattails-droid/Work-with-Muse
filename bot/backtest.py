@@ -2,9 +2,11 @@
 """Strategy backtest: DCA value strategy (paper only).
 
 Replays the live paper-trader rules over historical daily data:
-  - $100 paper contribution on the 1st of each calendar month ($50 start).
-  - Buy $50 of a coin, at most twice per coin per calendar month, and only
-    when the coin's price is below its 100-week (700-day) moving average.
+  - $100 paper contribution at the start of each two-week period ($50 start).
+  - Up to two $50 buys per two-week period, and ONLY when the coin's price
+    is below its 100-week (700-day) moving average. No buys in a period
+    where no coin is below its MA. INTERIM dispersement: the first two
+    qualifying coins in coin order, one $50 buy each.
     No buys until the coin has 700 days of history.
   - Sell a coin's entire position only when its price reaches 30% above that
     coin's average buy price (its DCA).
@@ -13,13 +15,17 @@ Replays the live paper-trader rules over historical daily data:
 Also computes a buy-and-hold baseline that receives the same contributions
 (split equally across coins) for comparison.
 
+--weekday-analysis: run the strategy seven times, allowing buys only on one
+weekday each time, and report which weekday produced the best return. Writes
+bot/weekday_analysis.json.
+
 Data: Yahoo Finance daily closes (free, no key) for every window, since the
 strategy needs 700 days of warmup history that CoinGecko's free tier cannot
 serve. Pass --prices-file to replay a saved series instead.
 
 Usage:
     python bot/backtest.py [--days 730] [--prices-file prices.json]
-                           [--out backtest_results.json]
+                           [--out backtest_results.json] [--weekday-analysis]
 """
 
 import argparse
@@ -48,10 +54,18 @@ YAHOO_SYMBOLS = {
 }
 
 BUY_USD = float(os.getenv("BUY_USD", "50"))
-MAX_BUYS_PER_MONTH = int(os.getenv("MAX_BUYS_PER_MONTH", "2"))
+MAX_BUYS_PER_PERIOD = int(os.getenv("MAX_BUYS_PER_PERIOD", "2"))
 MA_DAYS = int(os.getenv("MA_DAYS", "700"))          # 100-week moving average
 TAKE_PROFIT_MULT = float(os.getenv("TAKE_PROFIT_MULT", "1.30"))
-MONTHLY_CONTRIB = float(os.getenv("MONTHLY_CONTRIB", "100"))
+PERIOD_CONTRIB = float(os.getenv("PERIOD_CONTRIB", "100"))
+
+
+def period_key(day):
+    """Two-week period key for a 'YYYY-MM-DD' date: ISO year +
+    floor((ISO week - 1) / 2), exactly 26 per 52-week year."""
+    dt = datetime.strptime(day, "%Y-%m-%d")
+    iso_year, iso_week, _ = dt.isocalendar()
+    return f"{iso_year}-P{(iso_week - 1) // 2:02d}"
 
 
 def fetch_history(days):
@@ -83,7 +97,10 @@ def fetch_history(days):
     return series
 
 
-def run_backtest(full_series, days):
+def run_backtest(full_series, days, buy_weekday=None):
+    """Replay the strategy. If buy_weekday is set (0=Monday), buys are only
+    executed on that weekday (sells still run every day); used by the
+    weekday analysis."""
     dates = {c: [d for d, _ in full_series[c]] for c in COINS}
     closes = {c: [p for _, p in full_series[c]] for c in COINS}
 
@@ -105,17 +122,21 @@ def run_backtest(full_series, days):
 
     cash = STARTING_CASH
     contributed = STARTING_CASH
-    pos = {c: {"units": 0.0, "invested": 0.0,
-               "buy_month": None, "buy_count": 0} for c in COINS}
+    pos = {c: {"units": 0.0, "invested": 0.0} for c in COINS}
     trades = []
     equity_curve = []
+    cur_period, buys_this_period, bought_this_period = None, 0, set()
 
     for day in grid:
-        month = day[:7]
-        # 1) monthly contribution on the 1st
-        if day.endswith("-01"):
-            cash += MONTHLY_CONTRIB
-            contributed += MONTHLY_CONTRIB
+        period = period_key(day)
+        if period != cur_period:
+            # 1) biweekly contribution at the start of each two-week period
+            cash += PERIOD_CONTRIB
+            contributed += PERIOD_CONTRIB
+            cur_period = period
+            buys_this_period = 0
+            bought_this_period = set()
+        day_dt = datetime.strptime(day, "%Y-%m-%d")
         # 2) sells: full exit at +30% over the coin's DCA
         for c in COINS:
             p = pos[c]
@@ -130,35 +151,38 @@ def run_backtest(full_series, days):
                 pnl = proceeds - p["invested"]
                 cash += proceeds
                 trades.append({"coin": c, "side": "sell", "date": day,
+                               "weekday": day_dt.strftime("%A"),
                                "price": round(price, 4),
                                "dca": round(dca, 4),
                                "proceeds": round(proceeds, 2),
                                "pnl": round(pnl, 2)})
-                pos[c] = {"units": 0.0, "invested": 0.0,
-                          "buy_month": p["buy_month"],
-                          "buy_count": p["buy_count"]}
-        # 3) buys: $50 below the 100-week MA, max 2 per coin per month
-        for c in COINS:
-            price = price_at(c, day)
-            if price is None:
-                continue
-            p = pos[c]
-            if p["buy_month"] != month:
-                p["buy_month"] = month
-                p["buy_count"] = 0
-            ma = ma_at(c, day)
-            if (ma is not None and price < ma
-                    and p["buy_count"] < MAX_BUYS_PER_MONTH
-                    and cash >= BUY_USD):
-                units = BUY_USD / price
-                p["units"] += units
-                p["invested"] += BUY_USD
-                p["buy_count"] += 1
-                cash -= BUY_USD
-                trades.append({"coin": c, "side": "buy", "date": day,
-                               "price": round(price, 4),
-                               "amount": BUY_USD,
-                               "dca": round(p["invested"] / p["units"], 4)})
+                pos[c] = {"units": 0.0, "invested": 0.0}
+        # 3) buys: up to two $50 buys per period, only below the 100-week MA;
+        #    nothing if no coin is below its MA. INTERIM dispersement: first
+        #    two qualifying coins in coin order, one buy each.
+        if buy_weekday is None or day_dt.weekday() == buy_weekday:
+            for c in COINS:
+                if buys_this_period >= MAX_BUYS_PER_PERIOD:
+                    break
+                if c in bought_this_period:
+                    continue
+                price = price_at(c, day)
+                if price is None:
+                    continue
+                p = pos[c]
+                ma = ma_at(c, day)
+                if (ma is not None and price < ma and cash >= BUY_USD):
+                    units = BUY_USD / price
+                    p["units"] += units
+                    p["invested"] += BUY_USD
+                    buys_this_period += 1
+                    bought_this_period.add(c)
+                    cash -= BUY_USD
+                    trades.append({"coin": c, "side": "buy", "date": day,
+                                   "weekday": day_dt.strftime("%A"),
+                                   "price": round(price, 4),
+                                   "amount": BUY_USD,
+                                   "dca": round(p["invested"] / p["units"], 4)})
         # 4) equity (open positions marked to market)
         equity = cash + sum(pos[c]["units"] * (price_at(c, day) or 0)
                             for c in COINS)
@@ -201,6 +225,53 @@ def baseline(full_series, days, contributed_schedule):
     return round(total, 2), per_coin
 
 
+WEEKDAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday",
+            "Saturday", "Sunday"]
+
+
+def weekday_analysis(full_series, days, out="bot/weekday_analysis.json"):
+    """Run the strategy seven times, allowing buys on only one weekday each
+    time, and report which weekday produced the best return."""
+    per_weekday = {}
+    for w, name in enumerate(WEEKDAYS):
+        trades, equity, contributed = run_backtest(
+            full_series, days, buy_weekday=w)
+        end_balance = equity[-1][1]
+        buys = [t for t in trades if t["side"] == "buy"]
+        sells = [t for t in trades if t["side"] == "sell"]
+        per_weekday[name] = {
+            "ending_equity": end_balance,
+            "total_contributed": round(contributed, 2),
+            "return_pct": round((end_balance / contributed - 1) * 100, 2),
+            "buys": len(buys),
+            "sells": len(sells),
+            "max_drawdown_pct": max_drawdown(equity),
+        }
+    best = max(per_weekday.items(), key=lambda kv: kv[1]["return_pct"])[0]
+    end_dt = max(datetime.strptime(d, "%Y-%m-%d")
+                 for c in COINS for d, _ in full_series[c])
+    start = (end_dt - timedelta(days=days - 1)).strftime("%Y-%m-%d")
+    result = {
+        "generated_at": datetime.now(timezone.utc).isoformat(),
+        "strategy": (f"DCA value: up to {MAX_BUYS_PER_PERIOD}x ${BUY_USD:.0f} buys "
+                     f"per two-week period, only below the {MA_DAYS}-day MA, "
+                     f"${PERIOD_CONTRIB:.0f} contributed per period, "
+                     f"sell full position at +{round((TAKE_PROFIT_MULT - 1) * 100)}% over coin DCA"),
+        "window": {"start": start, "end": end_dt.strftime("%Y-%m-%d"),
+                   "days": days},
+        "per_weekday": per_weekday,
+        "best_weekday": best,
+        "note": ("Buys restricted to one weekday per simulation run; sells "
+                 "ran every day in all runs. Simulated past performance does "
+                 "not predict future results. Educational only, not financial "
+                 "advice."),
+    }
+    os.makedirs(os.path.dirname(out) or ".", exist_ok=True)
+    with open(out, "w") as f:
+        json.dump(result, f, indent=2)
+    return result
+
+
 def monthly_returns(equity_curve):
     months = {}
     for day, eq in equity_curve:
@@ -225,6 +296,9 @@ def main():
     ap.add_argument("--days", type=int, default=730)
     ap.add_argument("--prices-file", default=None)
     ap.add_argument("--out", default="backtest_results.json")
+    ap.add_argument("--weekday-analysis", action="store_true",
+                    help="run the strategy once per weekday (buys only on that "
+                         "weekday) and write bot/weekday_analysis.json")
     args = ap.parse_args()
 
     if args.prices_file:
@@ -238,14 +312,33 @@ def main():
         full = fetch_history(args.days)
         source = "Yahoo Finance daily closes, vs USD"
 
+    if args.weekday_analysis:
+        result = weekday_analysis(full, args.days)
+        print(f"Window: {result['window']['start']} -> {result['window']['end']}")
+        print(f"Strategy: {result['strategy']}")
+        print("\nWeekday buy analysis (buys only on that weekday):")
+        for name in WEEKDAYS:
+            r = result["per_weekday"][name]
+            mark = "  <-- best" if name == result["best_weekday"] else ""
+            print(f"  {name:9s}: equity ${r['ending_equity']:>10,.2f} "
+                  f"({r['return_pct']:+6.1f}%), buys {r['buys']:>3d}, "
+                  f"sells {r['sells']:>2d}, max DD {r['max_drawdown_pct']:.1f}%{mark}")
+        print("Wrote bot/weekday_analysis.json")
+        return 0
+
     trades, equity, contributed = run_backtest(full, args.days)
 
     end_dt = max(datetime.strptime(d, "%Y-%m-%d")
                  for c in COINS for d, _ in full[c])
-    grid_start = (end_dt - timedelta(days=args.days - 1)).strftime("%Y-%m-%d")
     grid = [(end_dt - timedelta(days=i)).strftime("%Y-%m-%d")
             for i in range(args.days - 1, -1, -1)]
-    contrib_schedule = [(d, MONTHLY_CONTRIB) for d in grid if d.endswith("-01")]
+    # biweekly contribution schedule: first day of each two-week period
+    seen, contrib_schedule = set(), []
+    for d in grid:
+        pk = period_key(d)
+        if pk not in seen:
+            seen.add(pk)
+            contrib_schedule.append((d, PERIOD_CONTRIB))
     base_total, base_per = baseline(full, args.days, contrib_schedule)
 
     months = monthly_returns(equity)
@@ -257,9 +350,10 @@ def main():
                                  if t["coin"] == c), 2) for c in COINS}
 
     result = {
-        "strategy": (f"DCA value: ${BUY_USD:.0f} buys (max {MAX_BUYS_PER_MONTH}/coin/month) "
-                     f"only below the {MA_DAYS}-day moving average, "
-                     f"${MONTHLY_CONTRIB:.0f}/month contributions, "
+        "strategy": (f"DCA value: up to {MAX_BUYS_PER_PERIOD}x ${BUY_USD:.0f} buys "
+                     f"per two-week period, only below the {MA_DAYS}-day moving average "
+                     f"(no buys if no coin qualifies), "
+                     f"${PERIOD_CONTRIB:.0f} contributed per two-week period, "
                      f"sell full position at +{round((TAKE_PROFIT_MULT - 1) * 100)}% over coin DCA"),
         "source": source,
         "window": {"start": equity[0][0], "end": equity[-1][0],
