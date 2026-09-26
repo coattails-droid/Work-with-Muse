@@ -1,17 +1,16 @@
 #!/usr/bin/env python3
 """Paper trading bot - DCA value strategy. Paper only: no real orders.
 
-Strategy (set 2026-09-26, biweekly):
-  - $100 of paper cash is contributed on the first run of each two-week
+Strategy (set 2026-09-26, biweekly, revised same day):
+  - $50 of paper cash is contributed on the first run of each two-week
     period (tracked in state, so it happens exactly once per period).
-    NOTE: this roughly doubles the old $100/month pace (~$200/month).
-  - Up to two $50 buys per two-week period, and ONLY in coins whose price
+  - Up to two $25 buys per two-week period, and ONLY in coins whose price
     is below their 100-week (700-day) moving average. If no coin is below
     its MA, there are no buys that period.
-  - If EVERY tracked coin is below its 100-week MA in a period, the $100
+  - If EVERY tracked coin is below its 100-week MA in a period, the $50
     is instead split equally across all of them (equal USD per coin).
   - Subset case: rank qualifying coins by depth below their 100-week MA
-    (deepest discount first); the two $50 buys go to the two deepest --
+    (deepest discount first); the two $25 buys go to the two deepest --
     never two buys in the same coin in one period.
   - Sell a coin's entire position only when its price is >= 30% above that
     coin's average buy price (its DCA).
@@ -30,11 +29,11 @@ import urllib.request
 from datetime import datetime, timezone
 
 STARTING_BALANCE = float(os.getenv("STARTING_BALANCE", "50"))
-BUY_USD = float(os.getenv("BUY_USD", "50"))
+BUY_USD = float(os.getenv("BUY_USD", "25"))
 MAX_BUYS_PER_PERIOD = int(os.getenv("MAX_BUYS_PER_PERIOD", "2"))
 MA_DAYS = int(os.getenv("MA_DAYS", "700"))
 TAKE_PROFIT_MULT = float(os.getenv("TAKE_PROFIT_MULT", "1.30"))
-PERIOD_CONTRIB = float(os.getenv("PERIOD_CONTRIB", "100"))
+PERIOD_CONTRIB = float(os.getenv("PERIOD_CONTRIB", "50"))
 SYMBOLS = [s.strip() for s in os.getenv(
     "SYMBOLS",
     "bitcoin,ethereum,ripple,bitcoin-cash,kaspa,pyth-network,near,bittensor,tao-bot"
@@ -182,8 +181,8 @@ def main():
                                        "buy_count": pos.get("buy_count", 0)}
 
     # 4) buys: only in coins below the 100-week MA. If EVERY tracked coin
-    #    is below its MA, the period's $100 is split equally across all of
-    #    them (equal USD per coin). Otherwise the two $50 buys go to the two
+    #    is below its MA, the period's $50 is split equally across all of
+    #    them (equal USD per coin). Otherwise the two $25 buys go to the two
     #    qualifying coins deepest below their MA (largest % discount).
     bought = set(state.get("bought_this_period") or [])
     with_data = [s for s in SYMBOLS
