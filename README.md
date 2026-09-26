@@ -23,8 +23,9 @@ If you do trade real money, never trade money you can't afford to lose.
   - Logs signals and balance to `bot/paper_state.json`
   - Strategy (2026-09-26): $100 paper cash contributed every two weeks; up to
     two $50 buys per two-week period, only in coins below their 100-week
-    (700-day) moving average (no buys if none qualify); a coin's full
-    position sells only at +30% over its average buy price
+    (700-day) moving average (no buys if none qualify); if EVERY coin is
+    below its MA, the $100 is split equally across all of them; a coin's
+    full position sells only at +30% over its average buy price
   - Safe mode: does NOT auto-trade aggressively
 
 - `.github/workflows/crypto-agent.yml` - GitHub Actions workflow
