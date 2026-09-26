@@ -1,0 +1,20 @@
+name: ntfy-test
+# TEMPORARY: one-shot end-to-end test of the ntfy phone-push wiring.
+# Delete this file after the test.
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Send test push
+        env:
+          NTFY_TOPIC: ${{ secrets.NTFY_TOPIC }}
+        run: |
+          code=$(curl -s -o /dev/null -w "%{http_code}" \
+            -H "Title: Test - paper-trading alerts" \
+            -H "Tags: white_check_mark" \
+            -d "If this buzzed your phone, failure push notifications are working end to end." \
+            "https://ntfy.sh/$NTFY_TOPIC")
+          echo "ntfy http code: $code"
+          [ "$code" = "200" ] || exit 1
