@@ -10,9 +10,9 @@ Strategy (set 2026-09-26, biweekly):
     its MA, there are no buys that period.
   - If EVERY tracked coin is below its 100-week MA in a period, the $100
     is instead split equally across all of them (equal USD per coin).
-  - Subset case (>2 qualifiers): INTERIM tie-break (pending Calvin's
-    choice): the first two qualifying coins in symbol order, one $50 buy
-    each -- never two buys in the same coin in one period.
+  - Subset case: rank qualifying coins by depth below their 100-week MA
+    (deepest discount first); the two $50 buys go to the two deepest --
+    never two buys in the same coin in one period.
   - Sell a coin's entire position only when its price is >= 30% above that
     coin's average buy price (its DCA).
   - The weekday of every buy is logged.
@@ -183,9 +183,8 @@ def main():
 
     # 4) buys: only in coins below the 100-week MA. If EVERY tracked coin
     #    is below its MA, the period's $100 is split equally across all of
-    #    them (equal USD per coin). Otherwise up to two $50 buys; INTERIM
-    #    tie-break for >2 qualifiers: first two in symbol order, one buy
-    #    each (never twice in one coin per period).
+    #    them (equal USD per coin). Otherwise the two $50 buys go to the two
+    #    qualifying coins deepest below their MA (largest % discount).
     bought = set(state.get("bought_this_period") or [])
     with_data = [s for s in SYMBOLS
                   if prices.get(s) is not None and mas.get(s) is not None]
@@ -222,6 +221,11 @@ def main():
         state["buys_this_period"] = n
         state["bought_this_period"] = sorted(bought)
     else:
+        # Subset case: rank qualifiers by depth below their 100-week MA
+        # (deepest discount first); the buys go to the top-ranked coins.
+        ranked = sorted(qualifiers, key=lambda s: prices[s] / mas[s])
+        slots = max(0, MAX_BUYS_PER_PERIOD - state["buys_this_period"])
+        picks = set(ranked[:slots])
         for sym in SYMBOLS:
             price = prices.get(sym)
             if price is None:
@@ -241,10 +245,10 @@ def main():
             elif sym in bought:
                 signals.append((sym, "hold",
                                 f"price ${price:,.2f} below MA but already bought this period"))
-            elif state["buys_this_period"] >= MAX_BUYS_PER_PERIOD:
+            elif sym not in picks:
                 signals.append((sym, "hold",
-                                f"price ${price:,.2f} below MA but period buy cap "
-                                f"({MAX_BUYS_PER_PERIOD}) reached"))
+                                f"price ${price:,.2f} below MA but not among the "
+                                f"two deepest below MA this period"))
             elif state["balance"] < BUY_USD:
                 signals.append((sym, "hold",
                                 f"price ${price:,.2f} below MA but cash ${state['balance']:.2f} < ${BUY_USD:.0f}"))
@@ -257,9 +261,11 @@ def main():
                 state["bought_this_period"] = sorted(bought)
                 state["balance"] -= BUY_USD
                 new_dca = pos["invested"] / pos["units"]
+                depth_pct = (1 - price / ma) * 100
                 actions.append(
                     f"BOUGHT {sym}: {units:.6f} @ ${price:,.2f} = ${BUY_USD:.2f} "
-                    f"(below 100-week MA ${ma:,.2f}; DCA now ${new_dca:,.2f}; {weekday})")
+                    f"({depth_pct:.1f}% below 100-week MA ${ma:,.2f}; "
+                    f"DCA now ${new_dca:,.2f}; {weekday})")
                 signals.append((sym, "buy",
                                 f"${BUY_USD:.0f} below 100-week MA ${ma:,.2f}",
                                 weekday))
