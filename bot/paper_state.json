@@ -2453,6 +2453,71 @@
           "reason": "price $0.09 - no 100-week MA yet (short history)"
         }
       ]
+    },
+    {
+      "at": "2026-09-27T12:14:51.396581+00:00",
+      "prices": {
+        "bitcoin": 84973,
+        "ethereum": 2714.53,
+        "ripple": 1.54,
+        "bitcoin-cash": 339.16,
+        "kaspa": 0.04864568,
+        "pyth-network": 0.088086,
+        "near": 5.2,
+        "bittensor": 334.74,
+        "tao-bot": 0.086155
+      },
+      "balance": 0.0,
+      "total_contributed": 250.0,
+      "equity": 255.38,
+      "actions": [],
+      "signals": [
+        {
+          "symbol": "bitcoin",
+          "side": "hold",
+          "reason": "price $84,973.00 below MA but not among the two deepest below MA this period"
+        },
+        {
+          "symbol": "ethereum",
+          "side": "hold",
+          "reason": "price $2,714.53 below MA but not among the two deepest below MA this period"
+        },
+        {
+          "symbol": "ripple",
+          "side": "hold",
+          "reason": "price $1.54 below MA but not among the two deepest below MA this period"
+        },
+        {
+          "symbol": "bitcoin-cash",
+          "side": "hold",
+          "reason": "price $339.16 below MA but not among the two deepest below MA this period"
+        },
+        {
+          "symbol": "kaspa",
+          "side": "hold",
+          "reason": "price $0.05 below MA but already bought this period"
+        },
+        {
+          "symbol": "pyth-network",
+          "side": "hold",
+          "reason": "price $0.09 below MA but already bought this period"
+        },
+        {
+          "symbol": "near",
+          "side": "hold",
+          "reason": "price $5.20 above 100-week MA $2.64"
+        },
+        {
+          "symbol": "bittensor",
+          "side": "hold",
+          "reason": "price $334.74 above 100-week MA $323.87"
+        },
+        {
+          "symbol": "tao-bot",
+          "side": "hold",
+          "reason": "price $0.09 - no 100-week MA yet (short history)"
+        }
+      ]
     }
   ],
   "started_at": "2026-09-18T12:40:21.980492+00:00",
