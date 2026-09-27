@@ -2518,6 +2518,71 @@
           "reason": "price $0.09 - no 100-week MA yet (short history)"
         }
       ]
+    },
+    {
+      "at": "2026-09-27T16:11:45.333468+00:00",
+      "prices": {
+        "bitcoin": 84558,
+        "ethereum": 2692.32,
+        "ripple": 1.52,
+        "bitcoin-cash": 332.54,
+        "kaspa": 0.04789526,
+        "pyth-network": 0.083138,
+        "near": 5.19,
+        "bittensor": 323.54,
+        "tao-bot": 0.083864
+      },
+      "balance": 0.0,
+      "total_contributed": 250.0,
+      "equity": 250.19,
+      "actions": [],
+      "signals": [
+        {
+          "symbol": "bitcoin",
+          "side": "hold",
+          "reason": "price $84,558.00 below MA but not among the two deepest below MA this period"
+        },
+        {
+          "symbol": "ethereum",
+          "side": "hold",
+          "reason": "price $2,692.32 below MA but not among the two deepest below MA this period"
+        },
+        {
+          "symbol": "ripple",
+          "side": "hold",
+          "reason": "price $1.52 below MA but not among the two deepest below MA this period"
+        },
+        {
+          "symbol": "bitcoin-cash",
+          "side": "hold",
+          "reason": "price $332.54 below MA but not among the two deepest below MA this period"
+        },
+        {
+          "symbol": "kaspa",
+          "side": "hold",
+          "reason": "price $0.05 below MA but already bought this period"
+        },
+        {
+          "symbol": "pyth-network",
+          "side": "hold",
+          "reason": "price $0.08 below MA but already bought this period"
+        },
+        {
+          "symbol": "near",
+          "side": "hold",
+          "reason": "price $5.19 above 100-week MA $2.64"
+        },
+        {
+          "symbol": "bittensor",
+          "side": "hold",
+          "reason": "price $323.54 below MA but not among the two deepest below MA this period"
+        },
+        {
+          "symbol": "tao-bot",
+          "side": "hold",
+          "reason": "price $0.08 - no 100-week MA yet (short history)"
+        }
+      ]
     }
   ],
   "started_at": "2026-09-18T12:40:21.980492+00:00",
