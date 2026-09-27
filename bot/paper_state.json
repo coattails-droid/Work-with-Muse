@@ -2583,6 +2583,71 @@
           "reason": "price $0.08 - no 100-week MA yet (short history)"
         }
       ]
+    },
+    {
+      "at": "2026-09-27T20:11:03.572185+00:00",
+      "prices": {
+        "bitcoin": 84749,
+        "ethereum": 2693.62,
+        "ripple": 1.53,
+        "bitcoin-cash": 334.91,
+        "kaspa": 0.04843985,
+        "pyth-network": 0.085996,
+        "near": 5.47,
+        "bittensor": 328.16,
+        "tao-bot": 0.084496
+      },
+      "balance": 0.0,
+      "total_contributed": 250.0,
+      "equity": 253.01,
+      "actions": [],
+      "signals": [
+        {
+          "symbol": "bitcoin",
+          "side": "hold",
+          "reason": "price $84,749.00 below MA but not among the two deepest below MA this period"
+        },
+        {
+          "symbol": "ethereum",
+          "side": "hold",
+          "reason": "price $2,693.62 below MA but not among the two deepest below MA this period"
+        },
+        {
+          "symbol": "ripple",
+          "side": "hold",
+          "reason": "price $1.53 below MA but not among the two deepest below MA this period"
+        },
+        {
+          "symbol": "bitcoin-cash",
+          "side": "hold",
+          "reason": "price $334.91 below MA but not among the two deepest below MA this period"
+        },
+        {
+          "symbol": "kaspa",
+          "side": "hold",
+          "reason": "price $0.05 below MA but already bought this period"
+        },
+        {
+          "symbol": "pyth-network",
+          "side": "hold",
+          "reason": "price $0.09 below MA but already bought this period"
+        },
+        {
+          "symbol": "near",
+          "side": "hold",
+          "reason": "price $5.47 above 100-week MA $2.64"
+        },
+        {
+          "symbol": "bittensor",
+          "side": "hold",
+          "reason": "price $328.16 above 100-week MA $323.86"
+        },
+        {
+          "symbol": "tao-bot",
+          "side": "hold",
+          "reason": "price $0.08 - no 100-week MA yet (short history)"
+        }
+      ]
     }
   ],
   "started_at": "2026-09-18T12:40:21.980492+00:00",
