@@ -2713,6 +2713,71 @@
           "reason": "price $0.08 - no 100-week MA yet (short history)"
         }
       ]
+    },
+    {
+      "at": "2026-09-28T04:12:46.254927+00:00",
+      "prices": {
+        "bitcoin": 83350,
+        "ethereum": 2652.6,
+        "ripple": 1.49,
+        "bitcoin-cash": 315.39,
+        "kaspa": 0.0466188,
+        "pyth-network": 0.082398,
+        "near": 5.21,
+        "bittensor": 307.3,
+        "tao-bot": 0.082085
+      },
+      "balance": 0.0,
+      "total_contributed": 250.0,
+      "equity": 246.0,
+      "actions": [],
+      "signals": [
+        {
+          "symbol": "bitcoin",
+          "side": "hold",
+          "reason": "price $83,350.00 below MA but not among the two deepest below MA this period"
+        },
+        {
+          "symbol": "ethereum",
+          "side": "hold",
+          "reason": "price $2,652.60 below MA but not among the two deepest below MA this period"
+        },
+        {
+          "symbol": "ripple",
+          "side": "hold",
+          "reason": "price $1.49 below MA but not among the two deepest below MA this period"
+        },
+        {
+          "symbol": "bitcoin-cash",
+          "side": "hold",
+          "reason": "price $315.39 below MA but not among the two deepest below MA this period"
+        },
+        {
+          "symbol": "kaspa",
+          "side": "hold",
+          "reason": "price $0.05 below MA but already bought this period"
+        },
+        {
+          "symbol": "pyth-network",
+          "side": "hold",
+          "reason": "price $0.08 below MA but already bought this period"
+        },
+        {
+          "symbol": "near",
+          "side": "hold",
+          "reason": "price $5.21 above 100-week MA $2.64"
+        },
+        {
+          "symbol": "bittensor",
+          "side": "hold",
+          "reason": "price $307.30 below MA but not among the two deepest below MA this period"
+        },
+        {
+          "symbol": "tao-bot",
+          "side": "hold",
+          "reason": "price $0.08 - no 100-week MA yet (short history)"
+        }
+      ]
     }
   ],
   "started_at": "2026-09-18T12:40:21.980492+00:00",
