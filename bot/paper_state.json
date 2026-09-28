@@ -2778,6 +2778,71 @@
           "reason": "price $0.08 - no 100-week MA yet (short history)"
         }
       ]
+    },
+    {
+      "at": "2026-09-28T08:14:54.261490+00:00",
+      "prices": {
+        "bitcoin": 82950,
+        "ethereum": 2647.25,
+        "ripple": 1.48,
+        "bitcoin-cash": 308.51,
+        "kaspa": 0.04705516,
+        "pyth-network": 0.080232,
+        "near": 5.15,
+        "bittensor": 304.0,
+        "tao-bot": 0.081202
+      },
+      "balance": 0.0,
+      "total_contributed": 250.0,
+      "equity": 244.43,
+      "actions": [],
+      "signals": [
+        {
+          "symbol": "bitcoin",
+          "side": "hold",
+          "reason": "price $82,950.00 below MA but not among the two deepest below MA this period"
+        },
+        {
+          "symbol": "ethereum",
+          "side": "hold",
+          "reason": "price $2,647.25 below MA but not among the two deepest below MA this period"
+        },
+        {
+          "symbol": "ripple",
+          "side": "hold",
+          "reason": "price $1.48 below MA but not among the two deepest below MA this period"
+        },
+        {
+          "symbol": "bitcoin-cash",
+          "side": "hold",
+          "reason": "price $308.51 below MA but not among the two deepest below MA this period"
+        },
+        {
+          "symbol": "kaspa",
+          "side": "hold",
+          "reason": "price $0.05 below MA but already bought this period"
+        },
+        {
+          "symbol": "pyth-network",
+          "side": "hold",
+          "reason": "price $0.08 below MA but already bought this period"
+        },
+        {
+          "symbol": "near",
+          "side": "hold",
+          "reason": "price $5.15 above 100-week MA $2.64"
+        },
+        {
+          "symbol": "bittensor",
+          "side": "hold",
+          "reason": "price $304.00 below MA but not among the two deepest below MA this period"
+        },
+        {
+          "symbol": "tao-bot",
+          "side": "hold",
+          "reason": "price $0.08 - no 100-week MA yet (short history)"
+        }
+      ]
     }
   ],
   "started_at": "2026-09-18T12:40:21.980492+00:00",
