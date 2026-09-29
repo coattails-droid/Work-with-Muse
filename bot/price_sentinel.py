@@ -2,7 +2,8 @@
 """Price sentinel.
 
 Runs on a schedule. Fetches 24h price changes for tracked coins from
-CoinGecko and manages GitHub issues as alerts:
+CoinGecko, with automatic fallback to CoinPaprika and Kraken (see
+bot/price_sources.py), and manages GitHub issues as alerts:
 
   * coin moves >= ALERT_THRESHOLD_PCT (abs, 24h) -> open an issue (or comment
     on the existing open one with a fresh reading)
@@ -27,6 +28,8 @@ import sys
 import urllib.parse
 import urllib.request
 
+from price_sources import get_markets
+
 API = "https://api.github.com"
 MARKER_RE = re.compile(r"<!-- sentinel-coin: ([a-z0-9-]+) -->")
 
@@ -46,15 +49,6 @@ def api(path, token, method="GET", data=None):
     with urllib.request.urlopen(req, timeout=60) as r:
         body = r.read().decode()
         return json.loads(body) if body else {}
-
-
-def fetch_markets(coin_ids):
-    ids = urllib.parse.quote(coin_ids)
-    url = (f"https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd"
-           f"&ids={ids}&price_change_percentage=24h")
-    req = urllib.request.Request(url, headers={"User-Agent": "price-sentinel"})
-    with urllib.request.urlopen(req, timeout=60) as r:
-        return json.loads(r.read().decode())
 
 
 def fmt_usd(x):
@@ -187,14 +181,16 @@ def main():
     threshold = float(os.environ.get("ALERT_THRESHOLD_PCT", "5"))
     dry_run = os.environ.get("DRY_RUN") == "1"
 
-    try:
-        markets = fetch_markets(coin_ids)
-    except Exception as e:
-        print(f"CoinGecko fetch failed: {e}", file=sys.stderr)
-        return 1
-    if not isinstance(markets, list) or not markets:
-        print("CoinGecko returned no market data", file=sys.stderr)
-        return 1
+    ids = [c.strip() for c in coin_ids.split(",") if c.strip()]
+    markets = get_markets(ids)
+    if not markets:
+        print("No market data from any source; skipping run.", file=sys.stderr)
+        return 0
+    by_src = {}
+    for m in markets:
+        by_src.setdefault(m.pop("_source", "?"), []).append(m["id"])
+    print("Market sources: " +
+          ", ".join(f"{s}({len(v)})" for s, v in sorted(by_src.items())))
 
     issues = api(f"/repos/{repo}/issues?state=open&per_page=100", token)
     open_alerts = {}
