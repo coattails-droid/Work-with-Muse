@@ -17,7 +17,8 @@ Strategy (set 2026-09-26, biweekly, revised same day):
   - The weekday of every buy is logged.
   - No leverage. Cash earns nothing.
 
-Live prices come from CoinGecko; the moving average uses Yahoo Finance
+Live prices come from CoinGecko with automatic fallback to CoinPaprika
+and Kraken (see bot/price_sources.py); the moving average uses Yahoo Finance
 daily closes (free, no key) because it needs 700 days of history.
 """
 
@@ -27,6 +28,8 @@ import sys
 import time
 import urllib.request
 from datetime import datetime, timezone
+
+from price_sources import get_prices
 
 STARTING_BALANCE = float(os.getenv("STARTING_BALANCE", "50"))
 BUY_USD = float(os.getenv("BUY_USD", "25"))
@@ -40,8 +43,6 @@ SYMBOLS = [s.strip() for s in os.getenv(
 ).split(",") if s.strip()]
 STATE_FILE = os.getenv("STATE_FILE", "bot/paper_state.json")
 
-COINGECKO_URL = "https://api.coingecko.com/api/v3/simple/price?ids={ids}&vs_currencies=usd"
-
 # CoinGecko id -> Yahoo Finance ticker (for 700-day moving averages)
 YAHOO = {
     "bitcoin": "BTC-USD",
@@ -54,15 +55,6 @@ YAHOO = {
     "bittensor": "TAO22974-USD",
     "tao-bot": "TAOBOT-USD",
 }
-
-
-def fetch_prices():
-    ids = ",".join(SYMBOLS)
-    url = COINGECKO_URL.format(ids=ids)
-    req = urllib.request.Request(url, headers={"User-Agent": "crypto-paper-bot/1.0"})
-    with urllib.request.urlopen(req, timeout=15) as resp:
-        data = json.loads(resp.read().decode())
-    return {k: v["usd"] for k, v in data.items() if "usd" in v}
 
 
 def fetch_ma(sym):
@@ -129,11 +121,17 @@ def main():
     print(f"[{now.isoformat()}] Starting paper trading run (DCA value strategy)")
     print("MODE: PAPER TRADING ONLY - no real orders placed")
 
-    try:
-        prices = fetch_prices()
-    except Exception as e:
-        print(f"Failed to fetch prices: {e}", file=sys.stderr)
-        sys.exit(1)
+    prices, sources = get_prices(SYMBOLS)
+    if not prices:
+        print("Prices unavailable from all sources; skipping run.",
+              file=sys.stderr)
+        sys.exit(0)
+    missing = [s for s in SYMBOLS if s not in prices]
+    if missing:
+        print(f"No price for {', '.join(missing)}; those coins are "
+              f"skipped this run.")
+    print(f"Price sources: {', '.join(sorted(set(sources.values())))}")
+    prices = {cid: rec["usd"] for cid, rec in prices.items()}
 
     state = load_state()
     actions = []
