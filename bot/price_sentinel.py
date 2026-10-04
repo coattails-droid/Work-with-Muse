@@ -2,7 +2,7 @@
 """Price sentinel.
 
 Runs on a schedule. Fetches 24h price changes for tracked coins from
-CoinGecko, with automatic fallback to CoinPaprika and Kraken (see
+CoinPaprika first, with automatic fallback to Kraken then CoinGecko (see
 bot/price_sources.py), and manages GitHub issues as alerts:
 
   * coin moves >= ALERT_THRESHOLD_PCT (abs, 24h) -> open an issue (or comment
