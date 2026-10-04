@@ -16,6 +16,7 @@ on:
 permissions:
   actions: read   # read run + job logs
   issues: write   # open diagnosis issues
+  contents: read  # checkout needs read access now the repo is private
 
 jobs:
   diagnose:
