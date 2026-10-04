@@ -19,7 +19,8 @@ If you do trade real money, never trade money you can't afford to lose.
 ## What's included
 
 - `bot/paper_trader.py` - paper trading bot (stdlib only, no API keys needed)
-  - Fetches prices from CoinGecko public API
+  - Fetches prices from CoinPaprika first (fallbacks: Kraken, CoinGecko;
+    all keyless)
   - Logs signals and balance to `bot/paper_state.json`
   - Strategy (2026-09-26): $50 paper cash contributed every two weeks; up to
     two $25 buys per two-week period, only in coins below their 100-week
@@ -42,7 +43,8 @@ If you do trade real money, never trade money you can't afford to lose.
   - Also watches `price-sentinel`
 
 - `bot/price_sentinel.py` + `.github/workflows/price-sentinel.yml` - price sentinel
-  - Runs hourly; checks 24h moves for BTC, ETH, XRP, BCH, KAS via CoinGecko
+  - Runs hourly; checks 24h moves for the tracked coins via CoinPaprika
+    (fallbacks: Kraken, CoinGecko)
   - Opens a GitHub issue when a coin moves >= 5% (configurable) in 24h,
     comments fresh readings on the open alert, and closes it automatically
     once the move settles
