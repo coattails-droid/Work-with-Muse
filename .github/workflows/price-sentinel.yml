@@ -21,6 +21,7 @@ on:
 
 permissions:
   issues: write
+  contents: read   # checkout needs read access now the repo is private
 
 jobs:
   watch:
