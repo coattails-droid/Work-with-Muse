@@ -1,21 +1,26 @@
 #!/usr/bin/env python3
 """Multi-source price fetching with automatic fallback.
 
-CoinGecko is the primary source, retried with backoff. When it refuses
-(e.g. HTTP 403 from shared GitHub runner IPs), the fetch falls through to
-keyless fallbacks and merges coverage: a coin is covered as soon as ANY
-source returns it.
+Sources are tried in order and a coin is covered as soon as ANY source
+returns it, so coverage merges across sources (see get_prices).
 
-Fallbacks (all free, no API key):
-  1. CoinPaprika - covers all tracked coins; 24h % change given directly.
-  2. Kraken      - covers 7/9 (no KAS, no TAOBOT); 24h change is derived
-                   from today's 00:00 UTC open, which is close enough for
-                   alerting and paper-trade decisions.
+Order (deliberate):
+  1. CoinPaprika - keyless, covers all tracked coins (incl. KAS, TAOBOT);
+     true rolling 24h % change; has not blocked GitHub runner IPs.
+  2. Kraken      - keyless public API with very generous rate limits;
+                   covers 7/9 (no KAS, no TAOBOT); 24h change is derived
+                   from today's 00:00 UTC open. Kept second rather than
+                   first so the sentinel never uses the since-midnight
+                   window as its primary reading (it would go half-blind
+                   right after 00:00 UTC).
+  3. CoinGecko   - true 24h change for all coins when reachable, but it
+                   intermittently 403s shared GitHub runner IPs, so it is
+                   the last resort rather than the primary.
 
 Public API:
   get_prices(coin_ids) -> (prices, sources)
       prices:  {coingecko_id: {"usd": float, "usd_24h_change": float|None}}
-      sources: {coingecko_id: "coingecko"|"coinpaprika"|"kraken"}
+      sources: {coingecko_id: "coinpaprika"|"kraken"|"coingecko"}
   get_markets(coin_ids) -> [CoinGecko-coins/markets-shaped dicts]
       for price_sentinel: id, symbol, name, current_price, high_24h,
       low_24h, price_change_percentage_24h. Coins with no data from any
@@ -81,7 +86,7 @@ def _get(url, timeout=15):
 
 
 def _fetch_coingecko(coin_ids):
-    """Primary source. Retried with backoff; {} on persistent failure."""
+    """Last-resort source. Retried with backoff; {} on persistent failure."""
     ids = ",".join(coin_ids)
     url = ("https://api.coingecko.com/api/v3/simple/price"
            f"?ids={urllib.parse.quote(ids)}&vs_currencies=usd"
@@ -156,9 +161,9 @@ def _fetch_kraken(coin_ids):
 
 
 SOURCES = (
-    ("coingecko", _fetch_coingecko),
     ("coinpaprika", _fetch_coinpaprika),
     ("kraken", _fetch_kraken),
+    ("coingecko", _fetch_coingecko),
 )
 
 
