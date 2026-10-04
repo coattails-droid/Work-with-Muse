@@ -17,8 +17,8 @@ Strategy (set 2026-09-26, biweekly, revised same day):
   - The weekday of every buy is logged.
   - No leverage. Cash earns nothing.
 
-Live prices come from CoinGecko with automatic fallback to CoinPaprika
-and Kraken (see bot/price_sources.py); the moving average uses Yahoo Finance
+Live prices come from CoinPaprika with automatic fallback to Kraken then
+CoinGecko (see bot/price_sources.py); the moving average uses Yahoo Finance
 daily closes (free, no key) because it needs 700 days of history.
 """
 
