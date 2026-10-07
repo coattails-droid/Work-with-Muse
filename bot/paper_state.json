@@ -5839,6 +5839,71 @@
           "reason": "price $0.07 - no 100-week MA yet (short history)"
         }
       ]
+    },
+    {
+      "at": "2026-10-07T08:14:24.341746+00:00",
+      "prices": {
+        "bitcoin": 84069.59994051316,
+        "ethereum": 2616.3589701462106,
+        "ripple": 1.4695699610038915,
+        "bitcoin-cash": 307.2164287776611,
+        "kaspa": 0.04174005746583956,
+        "pyth-network": 0.0726996554405005,
+        "near": 5.1586050035903215,
+        "bittensor": 300.1238849620218,
+        "tao-bot": 0.06870675070495492
+      },
+      "balance": 0.0,
+      "total_contributed": 300.0,
+      "equity": 281.64,
+      "actions": [],
+      "signals": [
+        {
+          "symbol": "bitcoin",
+          "side": "hold",
+          "reason": "price $84,069.60 below MA but not among the two deepest below MA this period"
+        },
+        {
+          "symbol": "ethereum",
+          "side": "hold",
+          "reason": "price $2,616.36 below MA but not among the two deepest below MA this period"
+        },
+        {
+          "symbol": "ripple",
+          "side": "hold",
+          "reason": "price $1.47 below MA but not among the two deepest below MA this period"
+        },
+        {
+          "symbol": "bitcoin-cash",
+          "side": "hold",
+          "reason": "price $307.22 below MA but not among the two deepest below MA this period"
+        },
+        {
+          "symbol": "kaspa",
+          "side": "hold",
+          "reason": "price $0.04 below MA but already bought this period"
+        },
+        {
+          "symbol": "pyth-network",
+          "side": "hold",
+          "reason": "price $0.07 below MA but already bought this period"
+        },
+        {
+          "symbol": "near",
+          "side": "hold",
+          "reason": "price $5.16 above 100-week MA $2.65"
+        },
+        {
+          "symbol": "bittensor",
+          "side": "hold",
+          "reason": "price $300.12 below MA but not among the two deepest below MA this period"
+        },
+        {
+          "symbol": "tao-bot",
+          "side": "hold",
+          "reason": "price $0.07 - no 100-week MA yet (short history)"
+        }
+      ]
     }
   ],
   "started_at": "2026-09-18T12:40:21.980492+00:00",
