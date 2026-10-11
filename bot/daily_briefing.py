@@ -5,6 +5,7 @@ Paper only. Exits non-zero with a clear message when Gmail is not connected.
 """
 import base64
 import json
+import os
 import subprocess
 import sys
 import urllib.request
@@ -16,7 +17,26 @@ from dynamic_credentials import add_surrogate_to_request, read_response_body
 CRED = "custom.github"
 ALLOWED = ["api.github.com", "github.com"]
 OWNER, REPO = "coattails-droid", "Work-with-Muse"
-TO = "redacted@example.com"
+def _briefing_recipient():
+    """Read the briefing recipient from a local (non-repo) config file.
+
+    The address is deliberately kept out of the public repo; it lives at
+    ~/.config/crypto-briefing/recipient on the machine that sends the briefing.
+    """
+    path = os.path.expanduser("~/.config/crypto-briefing/recipient")
+    try:
+        with open(path) as f:
+            addr = f.read().strip()
+    except OSError:
+        print(f"BRIEFING_RECIPIENT_MISSING: no recipient file at {path}", file=sys.stderr)
+        sys.exit(2)
+    if not addr or "@" not in addr:
+        print(f"BRIEFING_RECIPIENT_INVALID: {path} is empty or malformed", file=sys.stderr)
+        sys.exit(2)
+    return addr
+
+
+TO = _briefing_recipient()
 # Secondary Gmail account the briefing sends from (user keeps personal Gmail private)
 GMAIL_ACCOUNT = "607ad66901584abb870c48950f8cedf2"
 
