@@ -59,18 +59,16 @@ If you do trade real money, never trade money you can't afford to lose.
     that weekday) and writes `bot/weekday_analysis.json` naming the best
     weekday to buy
 
-- `bot/news_digest.py` + `.github/workflows/news-digest.yml` - daily news digest
-  - Every morning pulls crypto RSS feeds (CoinDesk, CoinTelegraph, Decrypt),
-    keeps the last day's stories, and commits `digests/YYYY-MM-DD.md`
-  - The morning email briefing includes the day's headlines automatically
-
-- `bot/news_digest.py` + `.github/workflows/ai-digest.yml` - daily AI news digest
-  - Same engine, different feeds: MIT Tech Review, TechCrunch AI, The Decoder
-  - Runs 7:15am ET, commits `digests-ai/YYYY-MM-DD.md`; headlines also go
-    out in the morning email briefing
-  - Includes a "new open models for local hardware" section: scans Hugging
-    Face for recently released models gaining traction, flags rough size
-    and whether they fit a laptop or need a GPU; each model reported once
+- `bot/news_digest.py` + `.github/workflows/daily-digests.yml` - daily digests
+  - One workflow every morning (7am ET) builds both digests in a single run
+    and one commit: crypto RSS feeds (CoinDesk, CoinTelegraph, Decrypt) to
+    `digests/YYYY-MM-DD.md`, and AI feeds (MIT Tech Review, TechCrunch AI,
+    The Decoder) to `digests-ai/YYYY-MM-DD.md`
+  - The morning email briefing includes both digests' headlines automatically
+  - The AI digest includes a "new open models for local hardware" section:
+    scans Hugging Face for recently released models gaining traction, flags
+    rough size and whether they fit a laptop or need a GPU; each model
+    reported once
 
 - `bot/research_agent.py` + `.github/workflows/research-agent.yml` - research agent
   - On-demand research briefs: open an issue labeled `research` (or titled
