@@ -11,7 +11,12 @@ import sys
 import urllib.request
 from datetime import datetime
 
-sys.path.insert(0, "/opt/hatch/skills/skill-creator/bin")
+for _cred_path in (
+    "/opt/hatch/workflow-skills/custom-connector-setup/bin",
+    "/opt/muse/skills/custom-connector-setup/bin",
+    "/opt/hatch/skills/skill-creator/bin",
+):
+    sys.path.insert(0, _cred_path)
 from dynamic_credentials import add_surrogate_to_request, read_response_body
 
 CRED = "custom.github"
@@ -150,6 +155,36 @@ def fetch_research_briefs(max_reports=2):
     return out
 
 
+def fetch_uspto_alerts():
+    """Return [(title, url)] for the freshest USPTO watch alert issues.
+
+    The class-alert workflows in uspto-nanotech-watch / uspto-quantum-watch
+    file one issue per day per repo ("[nanotech] 2026-10-21: 12 nanotech
+    document(s)"). Takes the newest issue created today or yesterday (UTC)
+    from each repo, so the section shows at most two lines. Returns [] when
+    nothing recent exists; the briefing sends without the section.
+    """
+    from datetime import timedelta, timezone
+
+    days = {(datetime.now(timezone.utc) - timedelta(days=d)).strftime("%Y-%m-%d")
+            for d in (0, 1)}
+    out = []
+    for repo in ("uspto-nanotech-watch", "uspto-quantum-watch"):
+        try:
+            issues = gh_get(
+                f"/repos/{OWNER}/{repo}/issues?state=open&per_page=10"
+                "&sort=created&direction=desc")
+        except Exception:
+            continue
+        for issue in issues if isinstance(issues, list) else []:
+            if issue.get("pull_request"):
+                continue
+            if (issue.get("created_at") or "")[:10] in days:
+                out.append((issue.get("title", ""), issue.get("html_url", "")))
+                break  # one alert issue per repo per day is the norm
+    return out
+
+
 def fetch_model_news(max_models=6):
     """Return (day, models) from the latest AI digest's open-models section.
 
@@ -284,6 +319,13 @@ def main():
             for f in findings:
                 lines.append(f"    - {f}")
         lines.append("  Full briefs with sources: research/ folder in the repo.")
+
+    alerts = fetch_uspto_alerts()
+    if alerts:
+        lines += ["", "USPTO watch (latest patent alerts):"]
+        for title, url in alerts:
+            lines.append(f"  - {title}")
+            lines.append(f"    {url}")
 
     body = "\n".join(lines)
     today = datetime.now().strftime("%b %d")
