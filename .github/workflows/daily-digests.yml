@@ -1,0 +1,62 @@
+name: daily-digests
+
+# Builds both daily digests in one run and commits them in a single commit:
+# crypto news -> digests/, AI news + the local open-model watch -> digests-ai/.
+# The morning email briefing reads both folders. (Merged 2026-10-21 from the
+# old news-digest and ai-digest workflows.)
+
+on:
+  schedule:
+    # 11:00 UTC = 7:00 AM ET (before the morning email briefing)
+    - cron: '0 11 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write   # commit the digests back to the repo
+
+jobs:
+  digests:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Build crypto news digest
+        run: python bot/news_digest.py
+
+      - name: Build AI news digest
+        env:
+          DIGEST_TITLE: 'AI News Digest'
+          DIGEST_DIR: 'digests-ai'
+          DIGEST_FEEDS: >-
+            [["MIT Tech Review",
+              "https://www.technologyreview.com/topic/artificial-intelligence/feed/"],
+             ["TechCrunch AI",
+              "https://techcrunch.com/category/artificial-intelligence/feed/"],
+             ["The Decoder",
+              "https://the-decoder.com/feed/"]]
+        run: python bot/news_digest.py
+
+      - name: Watch for new local open models
+        run: python bot/local_models.py
+
+      - name: Commit digests
+        run: |
+          git config user.name "daily-digests"
+          git config user.email "daily-digests@users.noreply.github.com"
+          git add digests/ digests-ai/ || true
+          git diff --staged --quiet || git commit -m "daily digests $(date -u +%Y-%m-%d)"
+          git push || echo "No push needed or push failed"
+
+      - name: Upload digest artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: daily-digests-${{ github.run_id }}
+          path: |
+            digests/
+            digests-ai/
