@@ -31,7 +31,7 @@ NAMES = {"bitcoin": "BTC", "ethereum": "ETH", "ripple": "XRP",
 
 WORKFLOWS = ["crypto-paper-agent", "price-sentinel", "daily-digests",
              "backtest", "failure-detective",
-             "research-agent", "dashboard"]
+             "research-agent", "dashboard", "auto-changelog"]
 
 HEADLINE_RE = re.compile(r"- \*\*\[(.*?)\]\((.*?)\)\*\*")
 
