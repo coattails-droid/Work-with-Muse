@@ -10,7 +10,7 @@ name: failure-detective
 
 on:
   workflow_run:
-    workflows: ["crypto-paper-agent", "price-sentinel", "daily-digests", "backtest", "research-agent", "dashboard"]
+    workflows: ["crypto-paper-agent", "price-sentinel", "daily-digests", "backtest", "research-agent", "dashboard", "auto-changelog"]
     types: [completed]
 
 permissions:
