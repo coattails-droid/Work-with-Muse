@@ -58,44 +58,6 @@
   },
   "trade_history": [
     {
-      "at": "2026-09-23T16:12:29.894129+00:00",
-      "prices": {
-        "bitcoin": 84306,
-        "ethereum": 2663.68,
-        "ripple": 1.52,
-        "bitcoin-cash": 350.29,
-        "kaspa": 0.03878356
-      },
-      "balance": 50.0,
-      "signals": [
-        {
-          "symbol": "bitcoin",
-          "side": "hold",
-          "reason": "price=$84,306.00 - no auto-trade in safe mode"
-        },
-        {
-          "symbol": "ethereum",
-          "side": "hold",
-          "reason": "price=$2,663.68 - no auto-trade in safe mode"
-        },
-        {
-          "symbol": "ripple",
-          "side": "hold",
-          "reason": "price=$1.52 - no auto-trade in safe mode"
-        },
-        {
-          "symbol": "bitcoin-cash",
-          "side": "hold",
-          "reason": "price=$350.29 - no auto-trade in safe mode"
-        },
-        {
-          "symbol": "kaspa",
-          "side": "hold",
-          "reason": "price=$0.04 - no auto-trade in safe mode"
-        }
-      ]
-    },
-    {
       "at": "2026-09-23T20:12:49.030701+00:00",
       "prices": {
         "bitcoin": 84370,
@@ -12700,6 +12662,71 @@
           "symbol": "bittensor",
           "side": "hold",
           "reason": "price $223.05 below MA but not among the two deepest below MA this period"
+        },
+        {
+          "symbol": "tao-bot",
+          "side": "hold",
+          "reason": "price $0.05 - no 100-week MA yet (short history)"
+        }
+      ]
+    },
+    {
+      "at": "2026-11-03T02:01:52.903663+00:00",
+      "prices": {
+        "bitcoin": 76986.17416550266,
+        "ethereum": 2254.542577024961,
+        "ripple": 1.2489826801047037,
+        "bitcoin-cash": 276.6164266128493,
+        "kaspa": 0.03198606109930747,
+        "pyth-network": 0.0621469842615782,
+        "near": 3.8374677144481164,
+        "bittensor": 223.13094300572268,
+        "tao-bot": 0.0506101499488788
+      },
+      "balance": 0.0,
+      "total_contributed": 400.0,
+      "equity": 329.19,
+      "actions": [],
+      "signals": [
+        {
+          "symbol": "bitcoin",
+          "side": "hold",
+          "reason": "price $76,986.17 below MA but not among the two deepest below MA this period"
+        },
+        {
+          "symbol": "ethereum",
+          "side": "hold",
+          "reason": "price $2,254.54 below MA but not among the two deepest below MA this period"
+        },
+        {
+          "symbol": "ripple",
+          "side": "hold",
+          "reason": "price $1.25 below MA but not among the two deepest below MA this period"
+        },
+        {
+          "symbol": "bitcoin-cash",
+          "side": "hold",
+          "reason": "price $276.62 below MA but not among the two deepest below MA this period"
+        },
+        {
+          "symbol": "kaspa",
+          "side": "hold",
+          "reason": "price $0.03 below MA but already bought this period"
+        },
+        {
+          "symbol": "pyth-network",
+          "side": "hold",
+          "reason": "price $0.06 below MA but already bought this period"
+        },
+        {
+          "symbol": "near",
+          "side": "hold",
+          "reason": "price $3.84 above 100-week MA $2.61"
+        },
+        {
+          "symbol": "bittensor",
+          "side": "hold",
+          "reason": "price $223.13 below MA but not among the two deepest below MA this period"
         },
         {
           "symbol": "tao-bot",
