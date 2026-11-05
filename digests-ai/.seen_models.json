@@ -19,6 +19,7 @@
   "autotrust/GEV-26B-Decide",
   "autotrust/JEV-27B-VL",
   "autotrust/JEV-35B",
+  "autotrust/Qwen3.8-Flash-Next-E384-FP4-V2",
   "black-forest-labs/flux-3-image-klein-comfy",
   "convaiinnovations/laya",
   "deepseek-ai/DeepSeek-V4.1-Flash",
