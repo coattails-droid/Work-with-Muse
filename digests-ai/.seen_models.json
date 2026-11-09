@@ -10,6 +10,7 @@
   "Qwen/Qwen-Image-2.1",
   "Qwen/Qwen-Image-2.1-Turbo",
   "RecursiveSI/flint",
+  "Scantist/GLM-5.3-SLIM-GGUF",
   "TokenRhythm/NeoHorse-1-4B",
   "TokenRhythm/NeoHorse-1-9B",
   "XHToken/Spark-X2.6-4B",
@@ -30,5 +31,6 @@
   "openbmb/MiniCPM-V-4.7-35B-A3B",
   "openbmb/MiniCPM5-2B",
   "prism-ml/Ternary-Bonsai-2-27B-gguf",
-  "speridlabs/idol"
+  "speridlabs/idol",
+  "xtools-at/DeepSeek-V4-Pro-Qwen3.5-9B-UNCENSORED-heretic"
 ]
