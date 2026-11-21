@@ -26,6 +26,7 @@
   "convaiinnovations/laya",
   "deepseek-ai/DeepSeek-V4.1-Flash",
   "deepseek-ai/DeepSeek-V4.1-Flash-1017",
+  "harness-hub/Qwen3.8-27B-pi-adapted",
   "higurashi-ai/Haru-4B",
   "m-a-p/YuE2-3B",
   "moonshotai/Kimi-K3.1-Pro",
@@ -34,5 +35,6 @@
   "openbmb/MiniCPM5-2B",
   "prism-ml/Ternary-Bonsai-2-27B-gguf",
   "speridlabs/idol",
+  "thinkingmachines/Inkling-2-Mini",
   "xtools-at/DeepSeek-V4-Pro-Qwen3.5-9B-UNCENSORED-heretic"
 ]
